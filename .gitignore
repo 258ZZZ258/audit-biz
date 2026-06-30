@@ -1,0 +1,42 @@
+# Build output
+target/
+build/
+out/
+*.class
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / local config (绝不入库)
+.env
+*.env
+application-local.yml
+application-local.yaml
+application-local.properties
+src/main/resources/application-secret*.yml
+
+# Logs
+*.log
+logs/
+
+# Review 闭环产物
+.review/
