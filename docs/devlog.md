@@ -12,6 +12,22 @@
   **提升到用户全局 `~/.claude/CLAUDE.md`**,本仓不重复;边界契约主本(v0.4)归本仓,audit-ai 侧留指针(**待回填**)。
 - **【待定】**:Java 工程脚手架(Maven/Gradle、包结构、Spring Boot 应用骨架)、lint/测试约定、国产化 JDK —— 待 SDD 评审。
 
+## 2026-06-30 · 后端起步路线(契约先行 + biz 步行骨架优先)
+
+- **背景核实**:audit-ai `demo-web` 是 stdlib-HTTP 内部工作台(**非 FastAPI**),query 无 HTTP 层,**全仓无 FastAPI**
+  → v0.4 §8 那套 biz 要调的服务端点(/retrieve /generate /compare /ocr /ingest-batch)**尚未落地**。
+- **决策(用户拍板)**:
+  - ① 真正的第一步是**锁边界契约**(v0.4 §8 → SPEC):阻塞两轨、零代码最便宜,锁完两轨可并行(一侧拿另一侧 stub 顶)。
+  - ② 实现从 **biz 锚定的「步行骨架」垂直切片**起 —— 制度查询一条线:前端 → biz(SSO 验令牌 + jCasbin + 预计算
+    `perm_tags`)→ 单向无身份调 audit-ai `/retrieve`(**先 stub,后真**)→ SSE 透传。最早暴露 Java/鉴权最高风险 + 验证整套架构。
+  - ③ **「audit-ai web 升级」= 用 FastAPI 暴露 §8 端点**(包裹已有 query/pipeline),是边界的 audit-ai 半边、**次轨**;
+    先做 `/retrieve`+`/generate` 喂切片,替换 biz 侧 stub。
+- **否决**:「先把 audit-ai 端点全做完再开 biz」(Java/鉴权风险后置)、「先把 biz 骨架全搭完再集成」(晚暴露集成风险)
+  —— 都不如最薄垂直切片早验架构。
+- **轨道**:Track0 边界契约 SPEC(落 `docs/audit-biz-docs/`,audit-ai 引用)→ Track A biz 切片(脚手架→SSO→jCasbin→查询端点)
+  ‖ Track B audit-ai FastAPI 端点。每轨走 SDD(spec→plan→tasks→TDD)+ Codex 审查闭环。
+- **关联**:切片的 SSO/permitAll 正是 TODO-AUTH-001 的收口点。
+
 ## 待办 / 未决(TODO)
 
 - [ ] **TODO-AUTH-001 · v0.4 §7 `permitAll` 鉴权方案存在越权风险**(来源:Codex 审查 finding `SEC-AUTH-001`,
