@@ -1,0 +1,374 @@
+openapi: 3.0.3
+info:
+  title: audit-biz → 前端(genesis-ui)制度查询契约
+  version: 1.0.0-draft
+  description: >
+    audit-biz 对前端的制度查询页契约(v0.4 §8.1 / RAG §5.9)。依据产品原型 V3
+    (东方/制度查询/微信图片_20260629150748 与 _150816)。biz 消费边界 /v1/query(见 boundary.v1.yaml)、
+    回查 PG(chunks/doc_versions + cases 表)装配富结构后交前端。本版(v1)只定核心对话+结果链;
+    会话/留痕/导出/上传 占位。命名 snake_case(对齐 §10 contract.py 与边界契约)。鉴权=甲方 SSO(边界一,有身份)。
+servers:
+  - url: https://audit-biz.example.com/api/v1
+    description: 对前端(经甲方 SSO)
+security:
+  - SsoBearer: []
+
+paths:
+  /regulation/queries:
+    post:
+      operationId: regulationQueryStream
+      summary: 提交制度查询(SSE 流式)
+      description: >
+        前端提交问题 → biz(SSO 鉴权 + jCasbin 授权 + 预计算过滤值)→ 边界 /v1/query → 回查 PG 装配 → SSE 回前端。
+        事件序:context →(delta 多个)→ result → done;任意时刻可 error。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuerySubmit' }
+      responses:
+        '200':
+          description: SSE 流(text/event-stream),事件 context|delta|result|done|error。
+          content:
+            text/event-stream:
+              schema: { $ref: '#/components/schemas/FeSseEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /regulation/clauses/{clause_id}:
+    get:
+      operationId: getClauseDetail
+      summary: 查看原文 / 复制条款链接
+      parameters:
+        - name: clause_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 条款原文 + 四级锚点 + 深链
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClauseDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /regulation/cases/{case_id}:
+    get:
+      operationId: getCaseDetail
+      summary: 查看案例详情
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 案例详情(cases 表回查)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────── 占位(v1 不展开 DTO，字段清单见 SPEC 原型映射）─────────
+  /regulation/sessions:
+    get:
+      operationId: listSessions
+      summary: '[占位] 历史会话列表（分页/搜索/状态筛选）'
+      description: '占位。原型:共 N 条分页 + 搜索标题 + 全部状态筛选。返回 PaginatedMeta + SessionSummary[]。DTO 待 SPEC-SESSIONS。'
+      responses:
+        '501': { description: 'Not Implemented（占位）' }
+  /regulation/sessions/{session_id}:
+    get:
+      operationId: getSession
+      summary: '[占位] 会话详情（用户问题/系统摘要/计数卡）'
+      responses:
+        '501': { description: 'Not Implemented（占位）' }
+  /regulation/queries/{query_id}/audit-trail:
+    get:
+      operationId: getAuditTrail
+      summary: '[占位] 操作与留痕（时间/操作人/操作/操作点/状态）'
+      responses:
+        '501': { description: 'Not Implemented（占位）' }
+  /regulation/queries/{query_id}/export:
+    post:
+      operationId: exportQueryReport
+      summary: '[占位] 导出查询报告（异步任务 → GET /tasks/{id}）'
+      responses:
+        '501': { description: 'Not Implemented（占位）' }
+  /files:
+    post:
+      operationId: uploadFile
+      summary: '[占位] 上传文件（PDF/Word/Excel ≤50MB，multipart）→ file_id'
+      responses:
+        '501': { description: 'Not Implemented（占位）' }
+
+components:
+  securitySchemes:
+    SsoBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 甲方 SSO 标准协议令牌(边界一,用户身份)。与边界二 X-Internal-Token 完全不同。
+
+  schemas:
+    QuerySubmit:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          description: 用户问题原文
+        session_id:
+          type: string
+          nullable: true
+          description: null=新会话;否则续会话
+        attachment_file_ids:
+          type: array
+          items: { type: string }
+          description: 已上传文件 id(POST /files 得)
+        options:
+          type: object
+          properties:
+            include_superseded:
+              type: boolean
+              default: false
+
+    FeSseEnvelope:
+      description: SSE 每条 event ∈ context|delta|result|done|error，data 为对应 JSON。
+      oneOf:
+        - $ref: '#/components/schemas/ContextEvent'
+        - $ref: '#/components/schemas/DeltaEvent'
+        - $ref: '#/components/schemas/ResultEvent'
+        - $ref: '#/components/schemas/DoneEvent'
+        - $ref: '#/components/schemas/ErrorEvent'
+
+    ContextEvent:
+      type: object
+      description: 首事件=右侧"本轮对话上下文"面板。
+      required: [query_id, session_id, current_question, route_type]
+      properties:
+        query_id: { type: string }
+        session_id: { type: string }
+        current_question: { type: string }
+        route_type:
+          type: string
+          description: 八路路由(见 boundary RouteType 8 值)
+        hit_skill:
+          type: string
+          description: 命中 Skill 显示名,如 案例检索（违规案例）
+        knowledge_scope:
+          type: array
+          items: { type: string }
+          description: 知识库范围,如 内部制度库 / 监管案例库 / 行业案例库
+        role:
+          type: string
+          description: 当前角色
+        permission_scope:
+          type: string
+          description: 权限范围,如 合规审计部（含下级）
+        short_term_memory:
+          type: string
+          nullable: true
+          description: 短期记忆摘要
+        review:
+          type: object
+          properties:
+            required: { type: boolean }
+            status:
+              type: string
+              enum: [none, pending, confirmed]
+              description: none=无需确认 / pending=待确认 / confirmed=已确认
+
+    DeltaEvent:
+      type: object
+      description: 系统摘要增量(answer_block)。
+      required: [block_seq, content]
+      properties:
+        block_seq: { type: integer }
+        block_type:
+          type: string
+          enum: [text, table, case_card, clarify_question]
+        content: { type: string }
+
+    ResultEvent:
+      type: object
+      description: 末尾装配结果(biz 回查 PG 后的富结构)。
+      required: [counts]
+      properties:
+        elapsed_ms:
+          type: integer
+          description: 检索耗时毫秒(原型"耗时 2.3s")
+        counts: { $ref: '#/components/schemas/ResultCounts' }
+        regulations:
+          type: array
+          items: { $ref: '#/components/schemas/RegulationHit' }
+        clauses:
+          type: array
+          items: { $ref: '#/components/schemas/ClauseCitation' }
+        rules:
+          type: array
+          items: { $ref: '#/components/schemas/RuleHit' }
+        cases:
+          type: array
+          items: { $ref: '#/components/schemas/CaseHit' }
+        case_insights:
+          type: array
+          items: { $ref: '#/components/schemas/CaseInsight' }
+        suggested_followups:
+          type: array
+          items: { type: string }
+          description: 推荐追问
+        confidence: { type: number, format: float }
+        ai_label: { type: boolean }
+        review_required: { type: boolean }
+        export_enabled: { type: boolean }
+
+    ResultCounts:
+      type: object
+      description: 结果 Tab 计数(命中制度/条款/监管规则/相关案例)。
+      properties:
+        regulations: { type: integer }
+        clauses: { type: integer }
+        rules: { type: integer }
+        cases: { type: integer }
+
+    ClauseCitation:
+      type: object
+      description: 完整四级引用(biz 回查 chunks/doc_versions，§7.3)。
+      required: [clause_id]
+      properties:
+        clause_id: { type: string }
+        chunk_id: { type: string, nullable: true }
+        doc_title: { type: string, nullable: true }
+        doc_no: { type: string, nullable: true }
+        clause_path: { type: string, nullable: true }
+        page_start: { type: integer, nullable: true }
+        page_end: { type: integer, nullable: true }
+        version: { type: string, nullable: true }
+        status:
+          type: string
+          nullable: true
+          enum: [effective, superseded, abolished]
+        snippet: { type: string, nullable: true, description: 命中条款摘录 }
+
+    RegulationHit:
+      type: object
+      required: [doc_id]
+      properties:
+        doc_id: { type: string }
+        doc_title: { type: string }
+        doc_no: { type: string, nullable: true }
+        version: { type: string, nullable: true }
+        status: { type: string, nullable: true }
+        hit_clause_count: { type: integer, description: 该制度命中条款数 }
+
+    RuleHit:
+      type: object
+      required: [doc_id]
+      properties:
+        doc_id: { type: string }
+        title: { type: string }
+        issuer: { type: string, nullable: true, description: 发文机关 }
+        status: { type: string, nullable: true }
+
+    CaseHit:
+      type: object
+      description: 相关案例(PG cases 表回查;原型表列)。
+      required: [case_id, case_name]
+      properties:
+        case_id: { type: string }
+        case_name: { type: string, description: 案例名称 }
+        regulator: { type: string, nullable: true, description: 监管机构 }
+        penalty_date: { type: string, nullable: true, description: 处罚日期 YYYY-MM-DD }
+        violation_topic: { type: string, nullable: true, description: 违规主题 }
+        related_regulation: { type: string, nullable: true, description: 关联制度 }
+        core_issue: { type: string, nullable: true, description: 核心问题 }
+        insight: { type: string, nullable: true, description: 启示要点 }
+
+    CaseInsight:
+      type: object
+      description: 案例启示摘要卡(block_type=case_card)。
+      required: [title]
+      properties:
+        title: { type: string }
+        summary: { type: string }
+
+    DoneEvent:
+      type: object
+      required: [finish_reason]
+      properties:
+        finish_reason:
+          type: string
+          enum: [stop, refused, length, error]
+        exhausted_scope:
+          type: array
+          items: { type: string }
+          description: 拒答时已穷尽范围
+
+    ErrorEvent:
+      type: object
+      required: [error]
+      properties:
+        error: { $ref: '#/components/schemas/ApiErrorBody' }
+
+    ClauseDetail:
+      type: object
+      required: [clause_id]
+      properties:
+        clause_id: { type: string }
+        doc_title: { type: string }
+        doc_no: { type: string, nullable: true }
+        clause_path: { type: string, nullable: true }
+        full_text: { type: string, description: 条款原文 }
+        page_start: { type: integer, nullable: true }
+        page_end: { type: integer, nullable: true }
+        version: { type: string, nullable: true }
+        status: { type: string, nullable: true }
+        deep_link: { type: string, description: 复制条款链接(深链) }
+
+    CaseDetail:
+      allOf:
+        - $ref: '#/components/schemas/CaseHit'
+        - type: object
+          properties:
+            full_text: { type: string, nullable: true, description: 案例正文/处罚决定全文 }
+            source_url: { type: string, nullable: true }
+
+    PaginatedMeta:
+      type: object
+      description: 分页信封(sessions 列表等用)。
+      properties:
+        page: { type: integer }
+        page_size: { type: integer }
+        total_items: { type: integer }
+        total_pages: { type: integer }
+
+    ApiErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, description: 错误码体系(B1xx 鉴权/权限 等，v0.4 §8.3) }
+        message: { type: string }
+        request_id: { type: string, nullable: true }
+
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error: { $ref: '#/components/schemas/ApiErrorBody' }
+
+  responses:
+    Unauthorized:
+      description: 未认证(B101)
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+    Forbidden:
+      description: 越权(B102)
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+    NotFound:
+      description: 资源不存在
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+    ValidationError:
+      description: 入参校验失败
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
