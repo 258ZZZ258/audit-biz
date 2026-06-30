@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Spring Boot 3.x BOM；JDK 17 基线（信创发行版另待甲方，语言级一致）。 -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.dfzq.auditai</groupId>
+    <artifactId>audit-biz</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>audit-biz</name>
+    <description>审计大模型系统一期 Java 后端(audit-biz)：对前端唯一入口 + 全部有状态能力</description>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+        <!-- A0 仅最小可启动集（Spring MVC）。后续任务按需加：
+             A1 spring-boot-starter-oauth2-resource-server（需 issuer 配置，否则启动失败）
+             A2 jCasbin + mybatis-plus-spring-boot3-starter（需 DataSource，否则启动失败）
+             later apache poi / docx4j。提前声明会破坏 A0「干净启动」DoD，故分任务引入。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

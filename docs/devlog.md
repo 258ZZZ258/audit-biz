@@ -28,6 +28,17 @@
   ‖ Track B audit-ai FastAPI 端点。每轨走 SDD(spec→plan→tasks→TDD)+ Codex 审查闭环。
 - **关联**:切片的 SSO/permitAll 正是 TODO-AUTH-001 的收口点。
 
+## 2026-07-01 · A0 Spring Boot 脚手架(Phase 4 IMPLEMENT)
+
+- **落地**:Maven + Spring Boot 3.3.5 + JDK 17,根包 `com.dfzq.auditai.biz`;`AuditBizApplication` + `/health`(web)
+  + Maven Wrapper(`mvnw`,自举只需 JDK)。TDD:`HealthControllerTest`(/health→200 `{status:UP}`)+
+  `AuditBizApplicationTests`(contextLoads)→ `mvn test` **2 passed / BUILD SUCCESS**(JDK 17.0.19 真验证)。
+- **对 TASKS A0 措辞的修正(决策)**:TASKS 原写"pom 提前声明 MyBatis-Plus/oauth2-resource-server/jCasbin/POI";
+  实测**这些 starter 无 DataSource/issuer 配置会让 A0 启动失败**,违反"每步留可运行态"。→ A0 只放 web+test 最小可启动集,
+  DB/安全/Casbin/POI **各随 A1/A2/后续任务引入**(届时同步配 issuer/datasource)。
+- **环境怪癖(team / CI 须知)**:需 **JDK 17**;mac `brew install openjdk@17` 是 **keg-only** →
+  构建前 `export JAVA_HOME=/opt/homebrew/opt/openjdk@17`(否则 `mvn`/`java` 找不到);Maven 用 `brew install maven` 或仓内 `./mvnw`。
+
 ## 待办 / 未决(TODO)
 
 - [ ] **TODO-AUTH-001 · v0.4 §7 `permitAll` 鉴权方案存在越权风险**(来源:Codex 审查 finding `SEC-AUTH-001`,

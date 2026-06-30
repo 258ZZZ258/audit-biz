@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: audit-biz
+
+server:
+  port: 8080
+
+# 后续任务注入（绝不入库，走 application-local* / env，见 .gitignore）：
+#   A1 spring.security.oauth2.resourceserver.jwt.issuer-uri（甲方 SSO）
+#   A2 spring.datasource.*（PG 权威库，MyBatis-Plus）
+#   A3 audit-ai 边界：base-url + X-Internal-Token（env AUDIT_AI_INTERNAL_TOKEN）
