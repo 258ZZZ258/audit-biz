@@ -124,10 +124,19 @@ components:
           default: false
           description: 是否纳入 superseded 版本（默认只检索 effective）。
 
+    RouteType:
+      type: string
+      description: 八路 route_type（audit-ai query/contract.py::RouteType，§10/§4.2）。
+      enum: [evidence, change, case, enumerate, judgmental, statistical, clarify, refuse]
+    BlockType:
+      type: string
+      description: answer_block 块类型（contract.py::BlockType，§10）。
+      enum: [text, table, case_card, clarify_question]
+
     SseEventEnvelope:
       description: >
         说明性 schema：SSE 每条消息 `event:` 为 meta|delta|citation|done|error，`data:` 为对应 JSON。
-        OpenAPI 不原生建模 SSE，故此处以 oneOf 列出各 data 负载供两侧 codegen 引用。
+        OpenAPI 不原生建模 SSE，故以 oneOf 列出各 data 负载供两侧 codegen 引用。字段词汇与 §10 contract.py 对齐。
       oneOf:
         - $ref: '#/components/schemas/QueryMetaEvent'
         - $ref: '#/components/schemas/QueryDeltaEvent'
@@ -136,42 +145,51 @@ components:
         - $ref: '#/components/schemas/QueryErrorEvent'
     QueryMetaEvent:
       type: object
-      required: [request_id, route_type]
+      description: 首事件，承响应级元数据（§10 QueryResult 头部字段）。
+      required: [request_id, route_type, ai_label, review_required]
       properties:
-        request_id: { type: string }
-        route_type:
-          type: string
-          description: >
-            八路路由结果（audit-ai 查询智能体）。已知含 factual / judgmental（判定型→biz 渲染"AI 辅助判断,人工复核"框）；
-            完整枚举待 RAG 设计路由章节确认（见 SPEC Open Questions）。
-        coverage:
-          type: object
-          nullable: true
-          description: 覆盖感知信息（可触发拒答）；结构待定，本版可空。
+        request_id: { type: string, description: 回显请求 request_id（贯穿 Langfuse trace）}
+        route_type: { $ref: '#/components/schemas/RouteType' }
+        ai_label:
+          type: boolean
+          description: AI 内容标识，强制存在（§9.3）；恒 true。
+        review_required:
+          type: boolean
+          description: 判定型（route_type=judgmental）=true → biz 渲染"AI 辅助判断,人工复核"框。
+        export_enabled:
+          type: boolean
+          description: 是否允许导出（§10 QueryResult.export_enabled）。
     QueryDeltaEvent:
       type: object
-      required: [text]
+      description: 答案块增量（§10 AnswerBlock；stream=false 的块作单条整块下发）。
+      required: [block_seq, text]
       properties:
-        text: { type: string, description: 答案增量文本片段 }
-        block_seq: { type: integer, description: '所属 answer_block 序号（biz 据此拼 answer_blocks[]）' }
+        block_seq: { type: integer, description: 'answer_block 序号，biz 据此拼 answer_blocks[]' }
+        block_type: { $ref: '#/components/schemas/BlockType' }
+        text: { type: string, description: 该块的增量（或整块）内容 }
     QueryCitationEvent:
       type: object
-      required: [chunk_id]
-      description: 轻量引用标识；biz 回查 PG 装配完整 citation(clause_id→doc→page→version→status)。
+      description: >
+        轻量引用标识（边界只回此，§8.2 Java 收口）。biz 按 clause_id 回查 PG 装配完整
+        citation(clause_id→doc→clause_path→page→version→status)；边界**不含**回查字段。
+      required: [clause_id]
       properties:
-        chunk_id: { type: string }
-        clause_id: { type: string, nullable: true }
-        confidence: { type: number, format: float }
-        ai_label: { type: string, nullable: true, description: AI 标注来源/类型标识 }
-        block_seq: { type: integer, description: 关联的 answer_block 序号 }
+        clause_id: { type: string, description: 回查主键（§7.3 Citation.clause_id）}
+        chunk_id: { type: string, nullable: true, description: 命中块 id（可选，溯源/调试）}
     QueryDoneEvent:
       type: object
+      description: 末事件，承响应级汇总（§10 QueryResult 尾部字段）。
       required: [finish_reason]
       properties:
         finish_reason:
           type: string
           enum: [stop, refused, length, error]
-          description: refused = 覆盖感知拒答（非错误）。
+          description: refused = 覆盖感知拒答（route_type=refuse，非错误）。
+        confidence: { type: number, format: float, description: 答案整体置信（§10 QueryResult.confidence）}
+        exhausted_scope:
+          type: array
+          items: { type: string }
+          description: 覆盖感知拒答时填，已穷尽的检索范围（§8.2 QueryResult.exhausted_scope）。
         token_usage:
           type: object
           nullable: true
@@ -182,7 +200,7 @@ components:
       type: object
       required: [code, message]
       properties:
-        code: { type: string, description: 见错误码体系（E1xx–E8xx / B1xx–B4xx）}
+        code: { type: string, description: 见错误码体系（E1xx–E8xx / B1xx–B4xx，含 B104）}
         message: { type: string }
 
     ApiError:

@@ -34,10 +34,11 @@
   `project_id?`、`owner?`。**owner 仅当 corpus_types 含 `audit_project` 时生效,制度语料检索忽略**(§7.x)。
   → 检索前置过滤红线满足:**算在 Java、用在 Python**(RAG §5.5)。
 - **响应**:SSE 流。事件序 `meta` →(`delta`/`citation` 交错)→ `done`;任意时刻可 `error` 后关闭。
-  - `meta`:`request_id` + `route_type`(八路路由结果;judgmental→biz 渲染"AI 辅助判断,人工复核")+ `coverage?`。
-  - `delta`:答案增量 `text` + `block_seq`(biz 据此拼 `answer_blocks[]`)。
-  - `citation`:**轻量标识** `chunk_id`(+`clause_id?`/`confidence`/`ai_label?`)——**biz 回查 PG 装配完整 citation**(§8.2 Java 收口,audit-ai 热路径不依赖 PG)。
-  - `done`:`finish_reason`(stop/**refused**=覆盖感知拒答,非错误/length/error)+ `token_usage?`。
+  **字段词汇与 audit-ai `query/query/contract.py`(§10 统一输出契约)逐字对齐**——见附录 A 对照表。
+  - `meta`(响应级头):`request_id` + `route_type`(8 值枚举)+ **`ai_label`(bool,恒 true)** + **`review_required`(bool;route=judgmental→true,biz 渲染"AI 辅助判断,人工复核"框)** + `export_enabled?`。
+  - `delta`:`block_seq` + `block_type`(text/table/case_card/clarify_question)+ `text`(增量或整块;`contract.py` `AnswerBlock.stream=false` 的块作单条整块)。
+  - `citation`:**轻量标识,只回 `clause_id`(+`chunk_id?`)**——**biz 回查 PG 装配完整 citation**(§8.2 Java 收口,audit-ai 热路径不依赖 PG)。`confidence/ai_label/route_type` 是**响应级**(在 meta/done),非 per-citation(纠 v0.4 §8.1 散文之松)。
+  - `done`(响应级尾):`finish_reason`(stop/**refused**=覆盖拒答/length/error)+ `confidence`(float)+ `exhausted_scope`(string[],拒答时填)+ `token_usage?`。
   - `error`:`code`+`message`。
 
 ### 3.2 占位端点(签名+职责锁定,DTO 待各自 SPEC)
@@ -49,7 +50,7 @@
 
 - 流前错误:HTTP status + `ApiError{ error:{code,message,request_id} }`。流中错误:SSE `error` 事件后关闭。
 - 段位:`E1xx–E8xx`(摄取侧,复用管线 §11.2)+ `B1xx`(鉴权/权限)/`B2xx`(业务校验)/`B3xx`(外部源)/`B4xx`(任务编排)。
-- **本契约新增** `B104 内部令牌无效`(边界二服务认证失败)——§8.3 原 B1xx 是用户向,B104 是服务向;**建议 CP 回灌 v0.4 §8.3**(见 Open Questions)。
+- **本契约新增** `B104 内部令牌无效`(边界二服务认证失败)——§8.3 原 B1xx 是用户向,B104 是服务向;**已回灌 v0.4 §8.3 B1xx 段**(T0.1 完成)。
 
 ### 3.4 版本化(One-Version Rule)
 
@@ -88,13 +89,39 @@ npx @redocly/cli lint docs/audit-biz-docs/openapi/boundary.v1.yaml
 4. 据本契约,audit-biz 可写出 stub 客户端、audit-ai 可写出 stub 端点,**步行切片(前端→biz→/v1/query→SSE)能用 stub 端到端跑通**。
 5. `/compare` `/ocr` `/ingest-batch` 占位签名 + 职责在案,不阻塞 v1。
 
-## 8. Open Questions(待人工/甲方输入,锁定后回填契约)
+## 8. Open Questions
 
-1. **`route_type` 完整枚举**:八路路由的 8 个取值与 biz 渲染映射(尤其哪些算 judgmental 要"人工复核"框)——待 RAG 设计路由章节确认。
-2. **`coverage` 结构**:覆盖感知拒答回传给 biz 的结构(是否需要给前端展示"未覆盖"提示)——待 RAG §覆盖判定确认。
-3. **`B104` 回灌**:内部令牌失败码是否正式并入 v0.4 §8.3(建议并入,以保错误码单一权威)。
-4. **`answer_blocks` 粒度**:audit-ai 按 `block_seq` 切块的口径(段/句/路由步)是否需与前端渲染对齐——待 Track A 前端契约联调。
-5. **限流/超时**:`/v1/query` 的超时与背压(SSE 长连)阈值——⚠ 待实测标定(§6.2 Resilience4j/bucket4j 在 biz 侧)。
-6. **观测对齐**:`request_id` 是否直接复用 audit-ai 现有 Langfuse trace id 约定——待查 query observe 实现。
+**已解(T0.1,读 audit-ai `contract.py`/`observe.py`)**:
+- ✅ #1 `route_type` 8 值 = `evidence/change/case/enumerate/judgmental/statistical/clarify/refuse`;**用显式 `review_required` bool**(非靠 route_type 推断)。
+- ✅ #2 coverage = `exhausted_scope: string[]`(拒答时填)+ route_type=`refuse` + `done.finish_reason=refused`。
+- ✅ #3 `B104` 已回灌 v0.4 §8.3 B1xx 段。
+- ✅ #6 trace:`request_id` 由 Track B 注入 Langfuse trace(`observe.py` 现按 name 内部建、未接外部 id)。
 
-> 审批后进 **Phase 2 PLAN**(用 `planning-and-task-breakdown` 出 Track0 收尾 + Track A 切片的实现计划)。
+**剩余(实现/联调期)**:
+4. **`answer_blocks` 粒度**:`block_seq`/`block_type` 切块口径与前端渲染对齐——待 Track A 前端契约联调。
+5. **限流/超时**:`/v1/query` 超时与背压(SSE 长连)阈值——⚠ 待实测标定(§6.2 Resilience4j/bucket4j 在 biz 侧)。
+
+---
+
+## 附录 A:字段对照表(audit-ai §10 `contract.py` ↔ 边界 v1 ↔ biz→前端)
+
+> T0.1 产物 / Checkpoint A 冻结对象。**边界只回轻量;回查字段由 biz 装配**(§8.2)。
+
+| §10 `contract.py`(audit-ai 产出) | 边界 v1(audit-ai→biz)| biz→前端(回查/装配后)|
+|---|---|---|
+| `QueryResult.route_type`(StrEnum 8) | `meta.route_type`(enum 8) | 透传 + 渲染分支 |
+| `QueryResult.ai_label`(bool) | `meta.ai_label`(bool) | 透传(AI 标识) |
+| `QueryResult.review_required`(bool) | `meta.review_required`(bool) | judgmental→人工复核框 |
+| `QueryResult.export_enabled`(bool) | `meta.export_enabled`(bool) | 控制导出按钮 |
+| `AnswerBlock.{type,content,stream}` | `delta.{block_type,text,block_seq}` | 拼 `answer_blocks[]` |
+| `QueryResult.confidence`(float) | `done.confidence` | 透传 |
+| `QueryResult.exhausted_scope`(list) | `done.exhausted_scope` | 拒答时展示已穷尽范围 |
+| `Citation.clause_id` | `citation.clause_id`(+`chunk_id?`)| **回查主键** |
+| `Citation.{doc_title,doc_no,clause_path,page_start,page_end,version,status}` | **边界不回**(audit-ai 跳回查) | **biz 按 clause_id 回查 PG 填**→ `citations[]` |
+| —(错误) | `error.{code,message}` / `ApiError` | 错误码体系(含 `B104`) |
+
+**两处对齐纠偏(记录在案)**:
+1. v0.4 §8.1 散文写"引用标识含 confidence/ai_label/route_type",实为 `contract.py` **响应级**字段(在 meta/done),非 per-citation → 边界按 `contract.py` 实装。
+2. audit-ai 现 `Citation` 自回查 PG 填满(MVP=后端)→ 边界要 audit-ai **加轻量模式**(只回 clause_id),回查移 biz(Task A4 ‖ B3,见 PLAN 风险表)。
+
+> 审批(Checkpoint A 冻结对照表)后:A 轨 / B 轨可并行。
