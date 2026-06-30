@@ -24,6 +24,8 @@
 - **Codex(代码审查)**:`code-review-and-quality` + `security-and-hardening`;发现写 `.review/findings.json` →
   Claude(原作者)逐条修复或带 `spec_ref` 反驳 → Codex 复审,直至无 critical/warning。修复归实现侧,审查者不自改。
 - SDD 产物落 `docs/<模块>-docs/`。**多开会话用独立 git worktree**(隔离工作树,不在他人正用的树里切分支)。
+- **Codex 侧入口与审查规则**:`AGENTS.md`(Codex 读,等同其 CLAUDE.md)+ `.cursor/rules/`
+  (`audit-biz-code-review.mdc` 审查规则 + `review-output.mdc` findings 输出 schema)+ `.cursor/settings.json`(Review Lens)。
 
 ## 架构定位(v0.4 / CP-011)
 
