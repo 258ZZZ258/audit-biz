@@ -6,6 +6,9 @@
 无状态的 AI 推理与文档解析在姊妹仓 **audit-ai**(Python/FastAPI);两者之间为**单向、无身份**调用
 (共享密钥 + 网络隔离,Java 下传预计算的权限过滤值)。
 
+> 姊妹仓定位:本机 `../audit-ai`,远端 `ssh://git@ssh.github.com:443/258ZZZ258/audit-ai.git`。
+> 跨仓参考哪些文件见 `CLAUDE.md`「姊妹仓 audit-ai」。
+
 ## 文档
 
 - 后端总体设计(边界契约主本):`docs/审计大模型系统_后端总体技术框架设计_v0_4.md`

@@ -62,7 +62,31 @@
 
 不回写任何源系统;数据流严格**单向只读**;知识库/制度正文**不自动修改**;**不建设审批/复核流转中心**。
 
+## 姊妹仓 audit-ai(定位与跨仓参考)
+
+audit-biz **不含 Python/AI 代码**;需查 audit-ai 的接口契约 / 数据 schema / 内部实现 / 设计时,按以下定位:
+
+- **本机路径**:`../audit-ai`(约定:两仓在 `~/Projects/` 下做姊妹目录)。**不存在则克隆到同级**:
+  `git clone ssh://git@ssh.github.com:443/258ZZZ258/audit-ai.git ../audit-ai`
+- **权威远端**(机器无关,CI / 他人机用这个):`ssh://git@ssh.github.com:443/258ZZZ258/audit-ai.git`
+
+**audit-biz agent 最常需要跨仓参考的 audit-ai 文件**(均在 `../audit-ai/` 下,先读对应 devlog 再改):
+
+| 用途 | audit-ai 路径 |
+|---|---|
+| `audit_corpus` 检索投影 schema(Java 下传过滤值要对齐字段名/类型) | `libs/common/common/milvus_schema.py` |
+| PG 字段/枚举(权威语料表;Java 业务表 add-only 不与之冲突) | `libs/common/common/pg_models.py` |
+| chunk_id 公式(引用四级回查装配按它对齐) | `libs/common/common/chunk_id.py` |
+| 导入契约 / IR schema | `libs/common/common/manifest.py` · `ir.py` |
+| RAG 查询 / 解析管线实现(Java 调的 /retrieve /generate /compare /ingest-batch 内部) | `query/query/` · `pipeline/pipeline/` |
+| AI 内部权威设计 | `docs/制度查询与制度比对智能体_RAG技术框架设计_v1.5.md` · `docs/文档处理与语料库构建_技术框架设计_v1.6.md` |
+| 模块开发记忆(决策/踩坑,lazy 按需读) | `docs/devlogs/*` · `docs/query-agent-docs/query_devlog.md` |
+
+> ⚠ audit-ai 当前形态是 CLI demo(`demo`/`demo-web`);v0.4 §8 描述的对 audit-biz 的 HTTP 服务端点
+> (/retrieve /generate /compare /ocr /ingest-batch)**可能尚未全部落地**——**契约以本仓 v0.4 §8 为准**,
+> audit-ai 侧 HTTP 层建成后在此回填实际端点/DTO。
+
 ## 设计文档指针
 
 - 边界总览(本仓主本):`docs/审计大模型系统_后端总体技术框架设计_v0_4.md`(经张翼飞复核后方可作汇报底稿)。
-- AI 内部(姊妹仓 audit-ai):`制度查询与制度比对智能体_RAG技术框架设计_v1.5`、`文档处理与语料库构建_技术框架设计_v1.6`。
+- AI 内部(姊妹仓):`../audit-ai/docs/制度查询与制度比对智能体_RAG技术框架设计_v1.5.md` · `../audit-ai/docs/文档处理与语料库构建_技术框架设计_v1.6.md`。
