@@ -54,6 +54,17 @@
   - **真修**:`src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker` = `mock-maker-subclass`(子类生成,不走 attach)。
     禁 attach 复现条件下 **5 passed**(修前 3 errors),正常 `mvn verify` 亦绿。**约定**:保留此配置;确需 inline(mock final 类)再单议。
 
+## 2026-07-01 · A2 jCasbin 授权 + 过滤值预计算
+
+- **落地**:`jcasbin 1.55.0`;`Authorizer`(唯一 enforcer、六类权限点、文件策略 `casbin/model.conf`+`policy.csv`)
+  + `FilterResolver`(JWT claim → `Filters`{permTags/corpusTypes/projectId/owner};**owner 仅 audit_project** §7.x)+ `dto.Filters`。
+- **TDD/验收**:`AuthorizerTest`(manager 可查/导出 · auditor 不可导出 · 未知主体拒)+ `FilterResolverTest`
+  (claim→filters · owner 仅 audit_project · 缺 claim 空表)→ `mvn verify` **11 passed**(禁 attach 复跑亦绿)。
+- **范围决策(薄增量)**:① **不接 PG**——文件策略,避开"`casbin_rule` 谁迁移"的 schema 归属跨仓决策(audit-ai Alembic 现管 PG),
+  生产切 PG JDBC adapter(接 PG 那步与 A4 一起);② **请求级「越权→B102」挪 A3**(有 /query 端点再串 Authorizer + 错误体)。
+- **踩坑/约定**:`Authorizer` 用 `ClassPathResource.getFile()` 取策略路径——**仅 dev/test(filesystem classpath)可用,打成 jar 会失败**;
+  生产走 PG adapter 不依赖此路径。claim 口径(perm_tags/corpus_scope/project_id)为 dev 约定,真 SSO schema 待甲方 §12。
+
 ## 待办 / 未决(TODO)
 
 - [x] **TODO-AUTH-001 · v0.4 §7 `permitAll` 鉴权方案存在越权风险**(✅ A1 收口 2026-07-01)(来源:Codex 审查 finding `SEC-AUTH-001`,
