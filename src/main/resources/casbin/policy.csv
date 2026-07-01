@@ -1,0 +1,7 @@
+# 六类权限点授权(obj=权限点, act=动作)。生产由甲方组织权限/SSO 下发,此处为 dev 示例。
+p, ROLE_AUDIT_MANAGER, regulation_query, read
+p, ROLE_AUDIT_MANAGER, export, execute
+p, ROLE_AUDIT_MANAGER, template, read
+p, ROLE_AUDITOR, regulation_query, read
+g, zhang, ROLE_AUDIT_MANAGER
+g, li, ROLE_AUDITOR
