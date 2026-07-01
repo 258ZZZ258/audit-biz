@@ -40,5 +40,5 @@ java -jar target/audit-biz-0.0.1-SNAPSHOT.jar
 
 ## 状态
 
-步行骨架(Track A,对 stub)建设中(见 `docs/devlog.md`):**已合并** A0 脚手架 · A1 SSO 验令牌 · A2 jCasbin 授权 · A3 /query SSE;
-**审中** A4 引用回查装配(PR #4)。本分支不含 A4 代码(`citation/`/CitationMapper 等随 PR #4 合入)。剩 I1(接真 audit-ai)。SDD 产物在 `docs/audit-biz-docs/`。
+步行骨架(Track A,对 stub)已合并(见 `docs/devlog.md`):A0 脚手架 · A1 SSO 验令牌 · A2 jCasbin 授权 · A3 /query SSE · **A4 引用回查装配**。
+剩 **I1**(接真 audit-ai,替换边界 stub)。SDD 产物在 `docs/audit-biz-docs/`。
