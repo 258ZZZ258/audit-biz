@@ -21,7 +21,14 @@ public class FilterResolver {
         List<String> permTags = orEmpty(jwt.getClaimAsStringList("perm_tags"));
         List<String> corpusTypes = orEmpty(jwt.getClaimAsStringList("corpus_scope"));
         String projectId = jwt.getClaimAsString("project_id");
-        String owner = corpusTypes.contains(AUDIT_PROJECT) ? jwt.getSubject() : null;
+        boolean auditProject = corpusTypes.contains(AUDIT_PROJECT);
+        // §4.5/§7.x:audit_project 资料 project_id 与 owner 须并列前置过滤。缺 project_id 会退化成仅 owner 过滤
+        // → 可能跨项目召回同 owner 资料。fail-closed:拒绝(A3 映射 B2xx),不静默降级。
+        if (auditProject && (projectId == null || projectId.isBlank())) {
+            throw new FilterValidationException(
+                    "检索范围含 audit_project 但缺 project_id:project_id 与 owner 须并列前置过滤(§4.5/§7.x)");
+        }
+        String owner = auditProject ? jwt.getSubject() : null;
         return new Filters(permTags, corpusTypes, projectId, owner);
     }
 

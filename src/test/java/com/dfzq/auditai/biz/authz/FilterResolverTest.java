@@ -1,6 +1,7 @@
 package com.dfzq.auditai.biz.authz;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.dfzq.auditai.biz.dto.Filters;
 import java.util.List;
@@ -42,6 +43,13 @@ class FilterResolverTest {
 
         Filters regulation = resolver.resolve(jwt(List.of(), List.of("internal"), null));
         assertThat(regulation.owner()).isNull();
+    }
+
+    @Test
+    void auditProjectWithoutProjectIdRejected() {
+        // §4.5/§7.x fail-closed:audit_project 缺 project_id → 拒绝,防跨项目召回。
+        assertThatThrownBy(() -> resolver.resolve(jwt(List.of(), List.of("audit_project"), null)))
+                .isInstanceOf(FilterValidationException.class);
     }
 
     @Test

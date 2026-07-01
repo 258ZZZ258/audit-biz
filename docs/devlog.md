@@ -62,8 +62,13 @@
   (claim→filters · owner 仅 audit_project · 缺 claim 空表)→ `mvn verify` **11 passed**(禁 attach 复跑亦绿)。
 - **范围决策(薄增量)**:① **不接 PG**——文件策略,避开"`casbin_rule` 谁迁移"的 schema 归属跨仓决策(audit-ai Alembic 现管 PG),
   生产切 PG JDBC adapter(接 PG 那步与 A4 一起);② **请求级「越权→B102」挪 A3**(有 /query 端点再串 Authorizer + 错误体)。
-- **踩坑/约定**:`Authorizer` 用 `ClassPathResource.getFile()` 取策略路径——**仅 dev/test(filesystem classpath)可用,打成 jar 会失败**;
-  生产走 PG adapter 不依赖此路径。claim 口径(perm_tags/corpus_scope/project_id)为 dev 约定,真 SSO schema 待甲方 §12。
+- **审查修复(Codex)**:
+  - `AUTHZ-BOOT-001`(**critical**)——`Authorizer` 用 `ClassPathResource.getFile()` 让 **repackaged jar 起不来**
+    (`java -jar` 复现 `FileNotFoundException ... cannot be resolved to absolute file path` @ authorizer bean;我先前"dev-only"辩解站不住——**默认打包产物必须可运行**)。
+    改 **InputStream 拷临时文件**的 jar-safe 加载 → 修后 `java -jar` **启动成功**(`Started AuditBizApplication`)。**复现法**:`mvn package -DskipTests && java -jar target/*.jar`。
+  - `AUTHZ-FILTER-001`(warning)——`audit_project` 缺 `project_id` 会退化成跨项目召回同 owner 资料(§4.5/§7.x)→
+    **fail-closed 拒绝**(`FilterValidationException`,A3 映射 B2xx)+ 补缺 project_id 拒绝单测。
+- **约定**:claim 口径(perm_tags/corpus_scope/project_id)为 dev 约定,真 SSO schema 待甲方 §12;文件策略仅 A2,生产切 PG JDBC adapter。
 
 ## 待办 / 未决(TODO)
 

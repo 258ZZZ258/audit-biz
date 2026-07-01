@@ -1,6 +1,10 @@
 package com.dfzq.auditai.biz.authz;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import org.casbin.jcasbin.main.Enforcer;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -10,6 +14,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>A2 用文件策略(classpath {@code casbin/model.conf} + {@code policy.csv});生产切 PG {@code casbin_rule}
  * JDBC adapter(接 PG 那步)。请求级「越权 → B102」的串接在 A3(有 /query 端点后)。
+ *
+ * <p>经 {@code getInputStream()} 拷临时文件后再交 jCasbin ——**jar-safe**(getFile() 在 repackaged jar 内会
+ * FileNotFoundException,AUTHZ-BOOT-001)。
  */
 @Component
 public class Authorizer {
@@ -17,15 +24,21 @@ public class Authorizer {
     private final Enforcer enforcer;
 
     public Authorizer() {
-        try {
-            // dev/test 从 classpath(target/classes)取文件路径;生产走 PG adapter,不依赖此路径。
-            String modelPath =
-                    new ClassPathResource("casbin/model.conf").getFile().getAbsolutePath();
-            String policyPath =
-                    new ClassPathResource("casbin/policy.csv").getFile().getAbsolutePath();
-            this.enforcer = new Enforcer(modelPath, policyPath);
+        this.enforcer =
+                new Enforcer(
+                        materialize("casbin/model.conf", "casbin-model", ".conf"),
+                        materialize("casbin/policy.csv", "casbin-policy", ".csv"));
+    }
+
+    /** 把 classpath 资源(可能内嵌于 jar)拷到临时文件,返回可被 jCasbin 读取的绝对路径。 */
+    private static String materialize(String classpath, String prefix, String suffix) {
+        try (InputStream in = new ClassPathResource(classpath).getInputStream()) {
+            File tmp = File.createTempFile(prefix, suffix);
+            tmp.deleteOnExit();
+            Files.copy(in, tmp.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return tmp.getAbsolutePath();
         } catch (IOException e) {
-            throw new IllegalStateException("加载 Casbin 模型/策略失败", e);
+            throw new IllegalStateException("加载 Casbin 资源失败: " + classpath, e);
         }
     }
 
