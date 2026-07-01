@@ -73,6 +73,14 @@
     + application.yml `org.casbin.jcasbin: warn` 双保险。`mvn verify` 输出实测 jCasbin 日志已静默。业务审计另由 Java 侧结构化留痕。
 - **约定**:claim 口径(perm_tags/corpus_scope/project_id)为 dev 约定,真 SSO schema 待甲方 §12;文件策略仅 A2,生产切 PG JDBC adapter。
 
+## 2026-07-01 · Checkpoint A:边界契约冻结
+
+- **冻结**:`SPEC-BOUNDARY` 附录 A 字段对照表锁定,`openapi/boundary.v1.yaml` 版本 `1.0.0-draft → 1.0.0`。
+  A 轨(biz A3/A4)/ B 轨(audit-ai B1–B4)据此**并行**;后续任何字段/语义改动走**破坏性变更流程**(§6 Ask first,或 `/v2`),不再随手改。
+- **前置已就绪**:T0.1 已把契约对齐 audit-ai §10 `contract.py`(route_type 8 值 / ai_label bool / citation 轻量 / review_required·exhausted_scope),
+  两处纠偏(confidence/ai_label/route_type 为响应级;引用回查翻转 A4‖B3)在案。
+- **进度**:T0.1 · A0 · A1 · A2 已合并 main;A3 起(第一次真用 boundary.v1.yaml)。
+
 ## 待办 / 未决(TODO)
 
 - [x] **TODO-AUTH-001 · v0.4 §7 `permitAll` 鉴权方案存在越权风险**(✅ A1 收口 2026-07-01)(来源:Codex 审查 finding `SEC-AUTH-001`,

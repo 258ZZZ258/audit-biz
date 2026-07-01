@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: audit-biz ↔ audit-ai 边界契约（边界二·单向无身份）
-  version: 1.0.0-draft
+  version: 1.0.0
   description: >
     audit-biz（Java，唯一对外入口）→ audit-ai（Python，无状态推理/解析端点）的内网服务间契约。
     单向、无身份、共享密钥 + 网络隔离（v0.4 §6.3/§7 边界二）。Java 把预计算好的权限过滤值

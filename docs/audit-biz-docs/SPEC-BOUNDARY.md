@@ -124,4 +124,5 @@ npx @redocly/cli lint docs/audit-biz-docs/openapi/boundary.v1.yaml
 1. v0.4 §8.1 散文写"引用标识含 confidence/ai_label/route_type",实为 `contract.py` **响应级**字段(在 meta/done),非 per-citation → 边界按 `contract.py` 实装。
 2. audit-ai 现 `Citation` 自回查 PG 填满(MVP=后端)→ 边界要 audit-ai **加轻量模式**(只回 clause_id),回查移 biz(Task A4 ‖ B3,见 PLAN 风险表)。
 
-> 审批(Checkpoint A 冻结对照表)后:A 轨 / B 轨可并行。
+> ✅ **Checkpoint A 已冻结(2026-07-01)**:字段对照表锁定,`boundary.v1.yaml` 版本转正 **v1.0.0**。
+> A 轨(biz)/ B 轨(audit-ai)据此并行;后续任何字段/语义改动走**破坏性变更流程**(§6 Ask first,或 `/v2`)。

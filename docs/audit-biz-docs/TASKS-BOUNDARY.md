@@ -3,6 +3,9 @@
 > SDD 阶段:**Phase 3 TASKS**(待人工审批 → 进 Phase 4 IMPLEMENT,逐任务 TDD)。源:`PLAN-BOUNDARY.md`。
 > **基线决策(已定)**:Maven · JDK 17 LTS(信创发行版待甲方)· Spring Boot 3.x · 根包 `com.dfzq.auditai.biz` · B104 回灌 v0.4 §8.3。
 > **跨仓**:`T0.1`/`A*`/`I1` 在 **audit-biz 仓**;`B1–B4` 在 **audit-ai 仓**(姊妹仓,见 CLAUDE.md 定位)。契约冻结后 A 轨 ‖ B 轨,各 worktree。
+>
+> **进度(2026-07-01)**:✅ T0.1 · ✅ A0 · ✅ A1 · ✅ A2 已合并 main;✅ **Checkpoint A 已冻结**(boundary.v1.yaml v1.0.0)。
+> 🔵 A3 进行中;⬜ A4;⬜ B1–B4(可并行起)。
 
 ## Definition of Done(每个任务都过的标准底线)
 
@@ -24,7 +27,7 @@
 **Verify:** OpenAPI lint 零报错;`contract.py` ↔ OpenAPI 字段对照表无缺漏。
 **Dependencies:** None。**Files:** `openapi/boundary.v1.yaml`、`SPEC-BOUNDARY.md`、`docs/审计大模型系统_后端总体技术框架设计_v0_4.md`(§8.3)。**Scope:** S。
 
-### ✅ Checkpoint A:契约冻结(人工 + 字段对照表确认)→ A 轨 / B 轨可并行
+### ✅ Checkpoint A:契约冻结(人工 + 字段对照表确认)→ A 轨 / B 轨可并行 —— **已冻结 2026-07-01(boundary.v1.yaml v1.0.0)**
 
 ---
 
