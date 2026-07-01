@@ -1,11 +1,17 @@
 spring:
   application:
     name: audit-biz
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # 甲方 SSO 的 JWKS(标准协议,§7/§12 最终协议待甲方)。dev/CI 用占位——
+          # NimbusJwtDecoder 懒取 JWKS,不在启动时联网,故占位不阻启动;生产走 env SSO_JWK_SET_URI。
+          jwk-set-uri: ${SSO_JWK_SET_URI:https://sso.placeholder.invalid/.well-known/jwks.json}
 
 server:
   port: 8080
 
 # 后续任务注入（绝不入库，走 application-local* / env，见 .gitignore）：
-#   A1 spring.security.oauth2.resourceserver.jwt.issuer-uri（甲方 SSO）
 #   A2 spring.datasource.*（PG 权威库，MyBatis-Plus）
 #   A3 audit-ai 边界：base-url + X-Internal-Token（env AUDIT_AI_INTERNAL_TOKEN）

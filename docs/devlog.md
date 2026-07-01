@@ -39,9 +39,24 @@
 - **环境怪癖(team / CI 须知)**:需 **JDK 17**;mac `brew install openjdk@17` 是 **keg-only** →
   构建前 `export JAVA_HOME=/opt/homebrew/opt/openjdk@17`(否则 `mvn`/`java` 找不到);Maven 用 `brew install maven` 或仓内 `./mvnw`。
 
+## 2026-07-01 · A1 SSO resource-server 验令牌(TODO-AUTH-001 收口)
+
+- **落地**:`spring-boot-starter-oauth2-resource-server`;`SecurityConfig`(无状态 + csrf off + **受保护端点强制认证**、
+  permitAll 仅 `{/health,/sso/callback}`)+ `WhoAmIController`(`GET /api/v1/me` 从 JWT 解析当前用户)。
+  JWKS 走 `jwt.jwk-set-uri`(env `SSO_JWK_SET_URI`,dev/CI 占位;Nimbus 懒取不阻启动;真 SSO 协议待甲方 §12)。
+- **TDD/验收**:`SecurityConfigTest`(/health→200 · /api/v1/me 无令牌→**401** · mock jwt→200+解析 user_id/name)
+  + `HealthControllerTest`(安全链在位仍公开,`@Import SecurityConfig` + `@MockBean JwtDecoder`)→ `mvn verify` **5 passed / BUILD SUCCESS**。
+- **收口 TODO-AUTH-001**:protected→401 证明**非全 permitAll**(纠 v0.4 §7 草案)。走 feature 分支 → PR(CI + Codex 审)。
+- **审查修复(Codex `TEST-VERIFY-001`,两轮)**:Mockito inline mock maker 依赖 byte-buddy **self-attach**,受限沙箱/JDK21+/信创会挂
+  (`Could not init inline Byte Buddy mock maker / Could not self-attach to current VM`)。**本机复现法**:
+  `mvn test -DargLine=-XX:+DisableAttachMechanism`(全禁 attach,贴 Codex 锁死沙箱;`allowAttachSelf=false` **不够**——byte-buddy 有外部进程 attach 兜底,本机会过)。
+  - **第一轮去 `@MockBean` 不够**:Spring 测试基建(MockitoTestExecutionListener 等)仍初始化 inline maker,与有无 @MockBean 无关——禁 attach 下**仍全挂**(复现证实)。
+  - **真修**:`src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker` = `mock-maker-subclass`(子类生成,不走 attach)。
+    禁 attach 复现条件下 **5 passed**(修前 3 errors),正常 `mvn verify` 亦绿。**约定**:保留此配置;确需 inline(mock final 类)再单议。
+
 ## 待办 / 未决(TODO)
 
-- [ ] **TODO-AUTH-001 · v0.4 §7 `permitAll` 鉴权方案存在越权风险**(来源:Codex 审查 finding `SEC-AUTH-001`,
+- [x] **TODO-AUTH-001 · v0.4 §7 `permitAll` 鉴权方案存在越权风险**(✅ A1 收口 2026-07-01)(来源:Codex 审查 finding `SEC-AUTH-001`,
   原记于 `audit-ai/.review/findings.json`,审的是 v0.4 设计正文)。
   - **风险**:v0.4 §7 把 Spring Security 过滤链"一律 `permitAll`、只验令牌 + 解析当前用户"——resource-server 会
     **解析**令牌但**不强制**受保护 API 必须认证,使 audit-biz(唯一对外边界)可能在 jCasbin 拿到可信用户**之前**
@@ -50,4 +65,5 @@
   - **处理路径**(spec Java 鉴权层时正面处理,二选一):① 修订 v0.4 §7——受保护 API **强制认证**,`permitAll`
     只留健康检查 / SSO 回调等**显式公开端点**,再对已认证 principal 跑 Casbin;② 带契约/§ 理由反驳该 finding。
   - **已做**:固化为审查红线 `audit-biz-code-review.mdc` #3(permitAll 不得覆盖受保护端点)+ `AGENTS.md` 硬约束。
-  - **何时收口**:Java 鉴权层 SDD / 实现前必须决议,**勿带病进实现**。
+  - **收口**:✅ A1 已实现 —— `SecurityConfig` 受保护端点强制认证 + permitAll 白名单 `{/health,/sso/callback}`;
+    `SecurityConfigTest` protected→401 验证(2026-07-01)。真 SSO 协议(§12 待甲方)定后只换 issuer/starter。
