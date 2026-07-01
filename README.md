@@ -15,6 +15,30 @@
 - 时间轴 / 模块开发记忆:`docs/devlog.md` + `docs/devlogs/*`
 - 协作流程与栈约定:`CLAUDE.md`
 
+## 本地后端栈(Docker)
+
+现阶段仅 **PostgreSQL**(独立端口 **5544**,不撞 audit-ai 栈 5432/5433)。首次起库自动建表 + seed(语料回查表 + `casbin_rule`)。
+
+```bash
+cp .env.example .env      # 设 PG 密码(AUDIT_BIZ_PG_PASSWORD);.env 已 gitignore
+docker compose up -d      # 起 PG(首次自动 docker/initdb/*.sql:建表 + seed)
+docker compose down       # 停(留数据卷)
+docker compose down -v    # 停 + 清库
+```
+
+应用连库(**为 A4 引用回查 / I1 准备**;A4 数据源随 PR #4 合入。连接串/密钥经 Spring 标准 **env** 注入,绝不入库):
+
+```bash
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5544/audit_biz \
+SPRING_DATASOURCE_USERNAME=audit_biz \
+SPRING_DATASOURCE_PASSWORD="$AUDIT_BIZ_PG_PASSWORD" \
+java -jar target/audit-biz-0.0.1-SNAPSHOT.jar
+```
+
+> **注**:`chunks/doc_versions/cases` 是本地 dev 回查用的**最小 stand-in**(audit-ai Alembic 管权威语料表,列更全);
+> 真集成(I1)连**共享 PG**。`casbin_rule` 是 biz 自有(A2 现用文件策略,切 PG 策略时用)。
+
 ## 状态
 
-🌱 Greenfield —— 仓库骨架已建,Java 工程脚手架(构建工具 / 包结构 / Spring Boot 应用)尚未落地,按 SDD 评审后逐步建设。
+步行骨架(Track A,对 stub)建设中(见 `docs/devlog.md`):**已合并** A0 脚手架 · A1 SSO 验令牌 · A2 jCasbin 授权 · A3 /query SSE;
+**审中** A4 引用回查装配(PR #4)。本分支不含 A4 代码(`citation/`/CitationMapper 等随 PR #4 合入)。剩 I1(接真 audit-ai)。SDD 产物在 `docs/audit-biz-docs/`。
