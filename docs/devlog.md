@@ -81,6 +81,17 @@
   两处纠偏(confidence/ai_label/route_type 为响应级;引用回查翻转 A4‖B3)在案。
 - **进度**:T0.1 · A0 · A1 · A2 已合并 main;A3 起(第一次真用 boundary.v1.yaml)。
 
+## 2026-07-01 · A3 制度查询 SSE 端点(接边界契约 + 串鉴权/授权/过滤)
+
+- **落地**:`POST /api/v1/regulation/queries`(SSE)→ **同步** jCasbin 授权(越权→B102)+ FilterResolver 预计算(校验失败→B2xx)fail-fast
+  → **异步** `BoundaryClient`(A3 `StubBoundaryClient`,callback 流式)桥接为前端 SSE `context/delta/done`。
+  统一错误体 `{error:{code,message,request_id}}`:`GlobalErrorHandler`(B102/B2xx)+ `RestAuthEntryPoint`(401 **B101**,替 Spring Security 空体)。
+  Jackson 全局 **SNAKE_CASE**(前端/边界契约命名决策)。
+- **TDD/验收**:`QueryControllerTest`(授权→SSE context/delta/done · 越权→403 B102 · 未认证→401 B101)→
+  `mvn verify` **15 passed**;禁 attach 复跑 15 passed;**jar 启动实测通过**(补 A2 教训:mvn 绿≠jar 可跑)。
+- **范围**:`result` 事件 + PG 引用四级回查装配留 **A4**(§8.2 Java 收口);边界 stub → 真 HTTP 客户端在 I1。
+- **踩坑**:`SecurityConfig` 挂 `RestAuthEntryPoint` 后,`HealthControllerTest`(@WebMvcTest 切片)须一并 `@Import RestAuthEntryPoint`(切片不自动含 @Component)。
+
 ## 待办 / 未决(TODO)
 
 - [x] **TODO-AUTH-001 · v0.4 §7 `permitAll` 鉴权方案存在越权风险**(✅ A1 收口 2026-07-01)(来源:Codex 审查 finding `SEC-AUTH-001`,

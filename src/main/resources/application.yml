@@ -1,6 +1,9 @@
 spring:
   application:
     name: audit-biz
+  jackson:
+    # 对前端/边界契约统一 snake_case(SPEC-FRONTEND-REGQUERY / boundary.v1.yaml 命名决策)。
+    property-naming-strategy: SNAKE_CASE
   security:
     oauth2:
       resourceserver:

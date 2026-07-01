@@ -2,6 +2,7 @@ package com.dfzq.auditai.biz.security;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
+import com.dfzq.auditai.biz.web.error.RestAuthEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -23,7 +24,8 @@ public class SecurityConfig {
     static final String[] PUBLIC_ENDPOINTS = {"/health", "/sso/callback"};
 
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain filterChain(HttpSecurity http, RestAuthEntryPoint entryPoint)
+            throws Exception {
         http.csrf(csrf -> csrf.disable()) // 无状态 API，不用 CSRF
                 .sessionManagement(sm -> sm.sessionCreationPolicy(STATELESS))
                 .authorizeHttpRequests(
@@ -32,7 +34,11 @@ public class SecurityConfig {
                                         .permitAll()
                                         .anyRequest()
                                         .authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+                .oauth2ResourceServer(
+                        oauth2 ->
+                                oauth2.jwt(Customizer.withDefaults())
+                                        .authenticationEntryPoint(entryPoint))
+                .exceptionHandling(eh -> eh.authenticationEntryPoint(entryPoint));
         return http.build();
     }
 }
