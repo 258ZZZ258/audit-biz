@@ -80,7 +80,7 @@ public class QueryController {
             String sessionId,
             String question,
             Filters filters) {
-        List<String> chunkIds = new ArrayList<>();
+        List<String> citationKeys = new ArrayList<>();
         try {
             boundaryClient.query(
                     queryId,
@@ -122,15 +122,19 @@ public class QueryController {
 
                         @Override
                         public void onCitation(String clauseId, String chunkId) {
-                            if (chunkId != null && !chunkId.isBlank()) {
-                                chunkIds.add(chunkId);
+                            // 契约必填 clause_id 优先,兼容 fallback chunk_id;二者在 audit-ai 现同值
+                            // (chunks 表主键即 chunk_id,回查按此;完整对齐见 TODO-CITE-KEY-001)。
+                            String key =
+                                    (clauseId != null && !clauseId.isBlank()) ? clauseId : chunkId;
+                            if (key != null && !key.isBlank()) {
+                                citationKeys.add(key);
                             }
                         }
 
                         @Override
                         public void onDone(String finishReason) {
                             // §8.2 Java 收口:按 chunk_id 回查 PG 装配完整引用,发 result(counts + clauses)。
-                            List<Citation> clauses = citationAssembler.assemble(chunkIds);
+                            List<Citation> clauses = citationAssembler.assemble(citationKeys);
                             send(
                                     emitter,
                                     "result",

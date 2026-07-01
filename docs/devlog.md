@@ -110,6 +110,9 @@
 - **踩坑**:
   - **application.yml 层级**:插 `mybatis-plus:` 顶层键时把 `spring.security...jwk-set-uri` 挤到 mybatis-plus 下 → 无 JwtDecoder、全 @SpringBootTest 挂。YAML 缩进敏感,改后逐块核。
   - **Testcontainers 本机跑不了(环境非代码)**:本机 **Docker 29.5.3** 要求 API ≥1.40,docker-java 默认发 1.32 → 400 `client version 1.32 is too old`;`DOCKER_API_VERSION`/换 socket/升 TC 1.20.4 均无效(docker-java ping 前不协商)。**IT 交 GitHub CI 验**(标准 Docker 接受 1.32)。
+- **审查修复(Codex,2 critical)**:
+  - `CONFIG-SECRET-DEFAULTS-001`——application.yml 提交了 PG url/账号/密码默认值(弱凭据入库)→ 改**嵌入式 H2 默认**(无凭据、dev/CI 可启动)+ 加 h2 runtime;生产经 env `DB_URL`+`SPRING_DATASOURCE_*` 覆盖真 PG。去掉 hikari fail-timeout hack(H2 常在)。
+  - `BOUNDARY-CITATION-KEY-001`——只收 `chunkId` 会把契约合法的 `clause_id`(必填)引用全丢 → **clause_id 优先 + chunk_id 兼容 fallback**(契约合规,不改冻结契约;完整对齐留 TODO 与 B 轨定)。
 - **待对齐(TODO-CITE-KEY-001)**:回查主键实为 **chunk_id**(audit-ai chunks 表主键,无独立 clause 列);冻结契约 §8.1 写 clause_id 必填/chunk_id 可选,与实现相反。见 TODO。
 
 ## 待办 / 未决(TODO)

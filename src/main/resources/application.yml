@@ -5,14 +5,9 @@ spring:
     # 对前端/边界契约统一 snake_case(SPEC-FRONTEND-REGQUERY / boundary.v1.yaml 命名决策)。
     property-naming-strategy: SNAKE_CASE
   datasource:
-    # A4 引用回查读 PG(权威库,audit-ai Alembic 管 schema)。dev/CI 无 PG 时 hikari 不阻启动
-    # (按需连接;缺 PG 时 CitationAssembler 降级)。生产 PG 常在;连接串走 env 绝不入库。
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/auditai}
-    username: ${DB_USER:auditai}
-    password: ${DB_PASSWORD:auditai}
-    hikari:
-      initialization-fail-timeout: -1
-      minimum-idle: 0
+    # 默认嵌入式 H2(dev/CI/无 PG 时可启动,无凭据入库,CONFIG-SECRET-DEFAULTS-001)。
+    # 生产经 env 覆盖为真 PG:DB_URL + SPRING_DATASOURCE_USERNAME/PASSWORD(连接串/密钥绝不入库)。
+    url: ${DB_URL:jdbc:h2:mem:auditai;DB_CLOSE_DELAY=-1;MODE=PostgreSQL}
   security:
     oauth2:
       resourceserver:
