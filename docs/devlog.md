@@ -47,9 +47,12 @@
 - **TDD/验收**:`SecurityConfigTest`(/health→200 · /api/v1/me 无令牌→**401** · mock jwt→200+解析 user_id/name)
   + `HealthControllerTest`(安全链在位仍公开,`@Import SecurityConfig` + `@MockBean JwtDecoder`)→ `mvn verify` **5 passed / BUILD SUCCESS**。
 - **收口 TODO-AUTH-001**:protected→401 证明**非全 permitAll**(纠 v0.4 §7 草案)。走 feature 分支 → PR(CI + Codex 审)。
-- **审查修复(Codex `TEST-VERIFY-001`)**:去掉 `@MockBean JwtDecoder`——它依赖 Mockito inline **self-attach**,
-  在受限沙箱 / JDK 21+ / 信创环境会挂(`Could not self-attach to current VM`;本机允许外部 attach 兜底所以本地/GitHub 过了,Codex 严格沙箱全挂)。
-  改 lambda `@TestConfiguration JwtDecoder`,**测试套保持零 Mockito**。**约定**:后续测试勿引入 `@MockBean`;确需 mock 先配 subclass MockMaker(`org.mockito.plugins.MockMaker=mock-maker-subclass`)。
+- **审查修复(Codex `TEST-VERIFY-001`,两轮)**:Mockito inline mock maker 依赖 byte-buddy **self-attach**,受限沙箱/JDK21+/信创会挂
+  (`Could not init inline Byte Buddy mock maker / Could not self-attach to current VM`)。**本机复现法**:
+  `mvn test -DargLine=-XX:+DisableAttachMechanism`(全禁 attach,贴 Codex 锁死沙箱;`allowAttachSelf=false` **不够**——byte-buddy 有外部进程 attach 兜底,本机会过)。
+  - **第一轮去 `@MockBean` 不够**:Spring 测试基建(MockitoTestExecutionListener 等)仍初始化 inline maker,与有无 @MockBean 无关——禁 attach 下**仍全挂**(复现证实)。
+  - **真修**:`src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker` = `mock-maker-subclass`(子类生成,不走 attach)。
+    禁 attach 复现条件下 **5 passed**(修前 3 errors),正常 `mvn verify` 亦绿。**约定**:保留此配置;确需 inline(mock final 类)再单议。
 
 ## 待办 / 未决(TODO)
 
