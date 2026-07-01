@@ -7,10 +7,12 @@ services:
     image: postgres:16
     environment:
       POSTGRES_USER: audit_biz
-      POSTGRES_PASSWORD: audit_biz
+      # 密码经 env(.env,不入库);无默认,强制显式设置——不留众所周知的明文口令。
+      POSTGRES_PASSWORD: ${AUDIT_BIZ_PG_PASSWORD:?请先 cp .env.example .env 并设置}
       POSTGRES_DB: audit_biz
     ports:
-      - "5544:5432"
+      # 仅绑回环:不在局域网暴露 DB(SEC-LOCAL-PG-DEFAULT-CREDS-001)。
+      - "127.0.0.1:5544:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
       # 首次初始化空库时按序执行(schema → seed)。
