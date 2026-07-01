@@ -3,11 +3,15 @@ package com.dfzq.auditai.biz.web;
 import com.dfzq.auditai.biz.authz.Authorizer;
 import com.dfzq.auditai.biz.authz.FilterResolver;
 import com.dfzq.auditai.biz.authz.ForbiddenException;
+import com.dfzq.auditai.biz.citation.CitationAssembler;
 import com.dfzq.auditai.biz.client.BoundaryClient;
+import com.dfzq.auditai.biz.dto.Citation;
 import com.dfzq.auditai.biz.dto.Filters;
 import com.dfzq.auditai.biz.dto.QuerySubmit;
 import jakarta.validation.Valid;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.core.task.AsyncTaskExecutor;
@@ -37,16 +41,19 @@ public class QueryController {
     private final Authorizer authorizer;
     private final FilterResolver filterResolver;
     private final BoundaryClient boundaryClient;
+    private final CitationAssembler citationAssembler;
     private final AsyncTaskExecutor executor;
 
     public QueryController(
             Authorizer authorizer,
             FilterResolver filterResolver,
             BoundaryClient boundaryClient,
+            CitationAssembler citationAssembler,
             AsyncTaskExecutor executor) {
         this.authorizer = authorizer;
         this.filterResolver = filterResolver;
         this.boundaryClient = boundaryClient;
+        this.citationAssembler = citationAssembler;
         this.executor = executor;
     }
 
@@ -73,6 +80,7 @@ public class QueryController {
             String sessionId,
             String question,
             Filters filters) {
+        List<String> chunkIds = new ArrayList<>();
         try {
             boundaryClient.query(
                     queryId,
@@ -113,7 +121,24 @@ public class QueryController {
                         }
 
                         @Override
+                        public void onCitation(String clauseId, String chunkId) {
+                            if (chunkId != null && !chunkId.isBlank()) {
+                                chunkIds.add(chunkId);
+                            }
+                        }
+
+                        @Override
                         public void onDone(String finishReason) {
+                            // §8.2 Java 收口:按 chunk_id 回查 PG 装配完整引用,发 result(counts + clauses)。
+                            List<Citation> clauses = citationAssembler.assemble(chunkIds);
+                            send(
+                                    emitter,
+                                    "result",
+                                    Map.of(
+                                            "counts",
+                                            Map.of("clauses", clauses.size()),
+                                            "clauses",
+                                            clauses));
                             send(emitter, "done", Map.of("finish_reason", finishReason));
                             emitter.complete();
                         }

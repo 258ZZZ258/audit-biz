@@ -4,6 +4,15 @@ spring:
   jackson:
     # 对前端/边界契约统一 snake_case(SPEC-FRONTEND-REGQUERY / boundary.v1.yaml 命名决策)。
     property-naming-strategy: SNAKE_CASE
+  datasource:
+    # A4 引用回查读 PG(权威库,audit-ai Alembic 管 schema)。dev/CI 无 PG 时 hikari 不阻启动
+    # (按需连接;缺 PG 时 CitationAssembler 降级)。生产 PG 常在;连接串走 env 绝不入库。
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/auditai}
+    username: ${DB_USER:auditai}
+    password: ${DB_PASSWORD:auditai}
+    hikari:
+      initialization-fail-timeout: -1
+      minimum-idle: 0
   security:
     oauth2:
       resourceserver:
@@ -11,6 +20,10 @@ spring:
           # 甲方 SSO 的 JWKS(标准协议,§7/§12 最终协议待甲方)。dev/CI 用占位——
           # NimbusJwtDecoder 懒取 JWKS,不在启动时联网,故占位不阻启动;生产走 env SSO_JWK_SET_URI。
           jwk-set-uri: ${SSO_JWK_SET_URI:https://sso.placeholder.invalid/.well-known/jwks.json}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
 
 server:
   port: 8080
@@ -20,7 +33,3 @@ logging:
     # 防授权明细泄露(AUTHZ-LOG-001):jCasbin 默认 INFO 打印 Policy/Role/enforce 决策。
     # 与 Authorizer 里的 Util.enableLog=false 双保险(挡任何绕过 Util 直走 slf4j 的路径)。
     org.casbin.jcasbin: warn
-
-# 后续任务注入（绝不入库，走 application-local* / env，见 .gitignore）：
-#   A2 spring.datasource.*（PG 权威库，MyBatis-Plus）
-#   A3 audit-ai 边界：base-url + X-Internal-Token（env AUDIT_AI_INTERNAL_TOKEN）

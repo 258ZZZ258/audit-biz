@@ -100,7 +100,23 @@
     (session_id=body.sessionId∥queryId、current_question=question、review{required,status});测试改**解析 SSE JSON 断言形态**。
   - **踩坑**:MockMvc `getContentAsString()` 默认非 UTF-8 解 SSE → 中文乱码,须 `getContentAsString(UTF_8)`。
 
+## 2026-07-01 · A4 引用四级回查装配 + result 事件(Testcontainers)
+
+- **落地**:`CitationMapper`(MyBatis-Plus,按 **chunk_id** 批量读 `chunks⋈doc_versions`)+ `CitationAssembler`
+  (装 `Citation`{chunkId/clauseId/docTitle/docNo/clausePath/page/version/status};**无 id 短路、回查失败/缺失降级空引用不崩**,§8.2 韧性)。
+  `BoundaryClient` 加 `onCitation`;`QueryController` 收集 chunk_id → `onDone` 回查装配发 **`result` 事件**(counts + clauses)→ done。
+- **数据源**:MyBatis-Plus + PG 驱动;`spring.datasource` env 驱动 + `hikari.initialization-fail-timeout:-1`(**无 PG 也能启动**,按需连接)。@MapperScan 放 `PersistenceConfig`(非主类,免 @WebMvcTest 切片扫 mapper 报错)。
+- **验收**:17 单测(surefire)绿 + spotless + **jar 启动实测通过**;`CitationAssemblerIT`(Testcontainers PG 回查真装配)——见下 Docker 怪癖。
+- **踩坑**:
+  - **application.yml 层级**:插 `mybatis-plus:` 顶层键时把 `spring.security...jwk-set-uri` 挤到 mybatis-plus 下 → 无 JwtDecoder、全 @SpringBootTest 挂。YAML 缩进敏感,改后逐块核。
+  - **Testcontainers 本机跑不了(环境非代码)**:本机 **Docker 29.5.3** 要求 API ≥1.40,docker-java 默认发 1.32 → 400 `client version 1.32 is too old`;`DOCKER_API_VERSION`/换 socket/升 TC 1.20.4 均无效(docker-java ping 前不协商)。**IT 交 GitHub CI 验**(标准 Docker 接受 1.32)。
+- **待对齐(TODO-CITE-KEY-001)**:回查主键实为 **chunk_id**(audit-ai chunks 表主键,无独立 clause 列);冻结契约 §8.1 写 clause_id 必填/chunk_id 可选,与实现相反。见 TODO。
+
 ## 待办 / 未决(TODO)
+
+- [ ] **TODO-CITE-KEY-001 · 回查主键 clause_id vs chunk_id 与冻结契约对齐**:audit-ai `chunks` 表主键即 `chunk_id`(无 clause 列),
+  A4 回查按 chunk_id;但 `boundary.v1.yaml` v1.0.0 把 `clause_id` 设为 citation 必填、`chunk_id` 可选(相反)。
+  **建议**:契约破坏性变更(§6 Ask first)——`chunk_id` 转必填回查键、`clause_id` 降可选/派生;A4 `Citation.clauseId` 现暂等于 chunkId。与 B 轨(audit-ai 侧真回轻量引用)一并定。
 
 - [x] **TODO-AUTH-001 · v0.4 §7 `permitAll` 鉴权方案存在越权风险**(✅ A1 收口 2026-07-01)(来源:Codex 审查 finding `SEC-AUTH-001`,
   原记于 `audit-ai/.review/findings.json`,审的是 v0.4 设计正文)。

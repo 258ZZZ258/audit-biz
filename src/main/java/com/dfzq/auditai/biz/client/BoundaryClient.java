@@ -22,6 +22,9 @@ public interface BoundaryClient {
 
         void onDelta(int blockSeq, String blockType, String text);
 
+        /** 轻量引用标识(§8.2):biz 收集后按 chunk_id 回查 PG 装配完整 citation。 */
+        void onCitation(String clauseId, String chunkId);
+
         void onDone(String finishReason);
 
         void onError(String code, String message);

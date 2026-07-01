@@ -16,6 +16,8 @@ public class StubBoundaryClient implements BoundaryClient {
         listener.onMeta("evidence", false);
         listener.onDelta(0, "text", "[stub] 已收到问题:" + question);
         listener.onDelta(0, "text", "(边界真端点 B 轨落地后替换本 stub)");
+        // stub 的 chunk_id 在 PG 不存在 → CitationAssembler 命中不到、降级空引用(不崩)。
+        listener.onCitation("stub-clause-1", "stub-chunk-000000000001");
         listener.onDone("stop");
     }
 }

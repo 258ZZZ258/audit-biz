@@ -71,6 +71,9 @@ class QueryControllerTest {
         assertThat(ctx.path("review").path("required").isBoolean()).isTrue();
         // request_id 下传 = 前端 query_id(链路不断,BOUNDARY-REQUEST-ID-001)
         assertThat(boundary.lastRequestId).isEqualTo(ctx.get("query_id").asText());
+        // A4:result 事件存在(capturing 不发 citation → 空引用降级,counts.clauses=0)
+        assertThat(sse).contains("event:result");
+        assertThat(eventData(sse, "result").path("counts").path("clauses").asInt()).isZero();
         assertThat(sse).contains("event:done");
     }
 
