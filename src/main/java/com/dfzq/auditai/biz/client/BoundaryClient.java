@@ -10,7 +10,11 @@ import com.dfzq.auditai.biz.dto.Filters;
  */
 public interface BoundaryClient {
 
-    void query(String question, Filters filters, Listener listener);
+    /**
+     * @param requestId 契约必填(boundary.v1.yaml QueryRequest.request_id):与前端 query_id 同值, 由 audit-ai
+     *     回显并注入 Langfuse trace,保前端 query_id ≡ 边界 request_id ≡ 观测 trace 一条链。
+     */
+    void query(String requestId, String question, Filters filters, Listener listener);
 
     /** 边界流式事件回调(对应 boundary.v1.yaml 的 SSE 事件)。 */
     interface Listener {

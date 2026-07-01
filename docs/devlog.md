@@ -91,6 +91,14 @@
   `mvn verify` **15 passed**;禁 attach 复跑 15 passed;**jar 启动实测通过**(补 A2 教训:mvn 绿≠jar 可跑)。
 - **范围**:`result` 事件 + PG 引用四级回查装配留 **A4**(§8.2 Java 收口);边界 stub → 真 HTTP 客户端在 I1。
 - **踩坑**:`SecurityConfig` 挂 `RestAuthEntryPoint` 后,`HealthControllerTest`(@WebMvcTest 切片)须一并 `@Import RestAuthEntryPoint`(切片不自动含 @Component)。
+- **审查修复(Codex,3 条 warning)**:
+  - `API-VALIDATION-001`——入口没校验 `QuerySubmit` → 加 `spring-boot-starter-validation` + `@NotBlank/@Size`,`@Valid`;
+    `GlobalErrorHandler` 覆盖 `MethodArgumentNotValidException`/`HttpMessageNotReadableException` → 422 B201;补缺/空 question、坏 JSON 用例。
+  - `BOUNDARY-REQUEST-ID-001`——`BoundaryClient` 缺 `request_id`(契约必填,前端 query_id ≡ 边界 request_id ≡ 观测 trace 一条链)→
+    签名加 `requestId`,控制器传同一个 queryId;测试用捕获替身断言 request_id 下传 = query_id。
+  - `SSE-FRONTEND-CONTRACT-001`——context 缺 `session_id`/`current_question`、review 层级错 → 按 ContextEvent 契约补齐
+    (session_id=body.sessionId∥queryId、current_question=question、review{required,status});测试改**解析 SSE JSON 断言形态**。
+  - **踩坑**:MockMvc `getContentAsString()` 默认非 UTF-8 解 SSE → 中文乱码,须 `getContentAsString(UTF_8)`。
 
 ## 待办 / 未决(TODO)
 

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 public class StubBoundaryClient implements BoundaryClient {
 
     @Override
-    public void query(String question, Filters filters, Listener listener) {
+    public void query(String requestId, String question, Filters filters, Listener listener) {
         listener.onMeta("evidence", false);
         listener.onDelta(0, "text", "[stub] 已收到问题:" + question);
         listener.onDelta(0, "text", "(边界真端点 B 轨落地后替换本 stub)");
