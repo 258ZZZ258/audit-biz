@@ -122,8 +122,13 @@ public class QueryController {
 
                         @Override
                         public void onCitation(String clauseId, String chunkId) {
-                            // 契约必填 clause_id 优先,兼容 fallback chunk_id;二者在 audit-ai 现同值
-                            // (chunks 表主键即 chunk_id,回查按此;完整对齐见 TODO-CITE-KEY-001)。
+                            // 契约必填 clause_id 优先(fallback chunk_id)。audit-ai 的 clause_id **就是
+                            // chunk_id 的值**
+                            // (anchors.py 明写 clause_id(=chunk_id)、r1_evidence.py "clause_id":
+                            // c.chunk_id,§7.3),
+                            // chunks 表主键即 chunk_id、无独立 clause 列。故按 clause_id 值回查 chunks.chunk_id 即
+                            // 「按 clause_id 回查」,恒匹配、不丢引用(clause_id-only 路径见
+                            // RegulationQueryCitationIT)。
                             String key =
                                     (clauseId != null && !clauseId.isBlank()) ? clauseId : chunkId;
                             if (key != null && !key.isBlank()) {

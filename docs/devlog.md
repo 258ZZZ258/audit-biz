@@ -117,9 +117,11 @@
 
 ## 待办 / 未决(TODO)
 
-- [ ] **TODO-CITE-KEY-001 · 回查主键 clause_id vs chunk_id 与冻结契约对齐**:audit-ai `chunks` 表主键即 `chunk_id`(无 clause 列),
-  A4 回查按 chunk_id;但 `boundary.v1.yaml` v1.0.0 把 `clause_id` 设为 citation 必填、`chunk_id` 可选(相反)。
-  **建议**:契约破坏性变更(§6 Ask first)——`chunk_id` 转必填回查键、`clause_id` 降可选/派生;A4 `Citation.clauseId` 现暂等于 chunkId。与 B 轨(audit-ai 侧真回轻量引用)一并定。
+- [x] **TODO-CITE-KEY-001 · 回查主键 clause_id vs chunk_id**(✅ 坐实,2026-07-01):查 audit-ai `query/query/generate/anchors.py`
+  明写 **`clause_id(=chunk_id)`**、`Citation(clause_id=cid)`(cid 即 chunk_id)、`r1_evidence.py "clause_id": c.chunk_id`——
+  **audit-ai 的 clause_id 就是 chunk_id 的值**(chunks 表主键即 chunk_id、无独立 clause 列)。故契约"clause_id 必填回查键"**功能上成立**:
+  A4 按 clause_id 值回查 `chunks.chunk_id` 恒匹配、不丢引用(BOUNDARY-CITATION-KEY-001 收口:走 Codex 方案 a,坐实注释 + `RegulationQueryCitationIT` clause_id-only 测试)。
+  **不需破坏性契约变更**;可选后续:给 boundary.v1.yaml `clause_id` 补一句"= chunk PK"的说明(additive,非破坏)。
 
 - [x] **TODO-AUTH-001 · v0.4 §7 `permitAll` 鉴权方案存在越权风险**(✅ A1 收口 2026-07-01)(来源:Codex 审查 finding `SEC-AUTH-001`,
   原记于 `audit-ai/.review/findings.json`,审的是 v0.4 设计正文)。
