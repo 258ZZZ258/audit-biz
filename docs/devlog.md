@@ -47,6 +47,9 @@
 - **TDD/验收**:`SecurityConfigTest`(/health→200 · /api/v1/me 无令牌→**401** · mock jwt→200+解析 user_id/name)
   + `HealthControllerTest`(安全链在位仍公开,`@Import SecurityConfig` + `@MockBean JwtDecoder`)→ `mvn verify` **5 passed / BUILD SUCCESS**。
 - **收口 TODO-AUTH-001**:protected→401 证明**非全 permitAll**(纠 v0.4 §7 草案)。走 feature 分支 → PR(CI + Codex 审)。
+- **审查修复(Codex `TEST-VERIFY-001`)**:去掉 `@MockBean JwtDecoder`——它依赖 Mockito inline **self-attach**,
+  在受限沙箱 / JDK 21+ / 信创环境会挂(`Could not self-attach to current VM`;本机允许外部 attach 兜底所以本地/GitHub 过了,Codex 严格沙箱全挂)。
+  改 lambda `@TestConfiguration JwtDecoder`,**测试套保持零 Mockito**。**约定**:后续测试勿引入 `@MockBean`;确需 mock 先配 subclass MockMaker(`org.mockito.plugins.MockMaker=mock-maker-subclass`)。
 
 ## 待办 / 未决(TODO)
 
