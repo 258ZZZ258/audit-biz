@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.dfzq.auditai.biz.security.SecurityConfig;
+import com.dfzq.auditai.biz.web.error.RestAuthEntryPoint;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -16,7 +17,11 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /** /health permitAll → 200 {"status":"UP"}（安全链在位仍公开，A0+A1）。 */
 @WebMvcTest(HealthController.class)
-@Import({SecurityConfig.class, HealthControllerTest.TestSecurityBeans.class})
+@Import({
+    SecurityConfig.class,
+    RestAuthEntryPoint.class,
+    HealthControllerTest.TestSecurityBeans.class
+})
 class HealthControllerTest {
 
     @Autowired private MockMvc mockMvc;
