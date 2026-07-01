@@ -1,0 +1,25 @@
+name: audit-biz
+
+# audit-biz 本地后端栈(现阶段仅 PG)。独立端口 5544,不撞 audit-ai 栈(5432/5433)。
+# 生产/信创另行部署;本 compose 只为本地 dev/demo。连接串/密钥经 env 注入应用(见 README「本地后端栈」)。
+services:
+  pg:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: audit_biz
+      POSTGRES_PASSWORD: audit_biz
+      POSTGRES_DB: audit_biz
+    ports:
+      - "5544:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      # 首次初始化空库时按序执行(schema → seed)。
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audit_biz -d audit_biz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pg_data:
