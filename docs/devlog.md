@@ -68,6 +68,9 @@
     改 **InputStream 拷临时文件**的 jar-safe 加载 → 修后 `java -jar` **启动成功**(`Started AuditBizApplication`)。**复现法**:`mvn package -DskipTests && java -jar target/*.jar`。
   - `AUTHZ-FILTER-001`(warning)——`audit_project` 缺 `project_id` 会退化成跨项目召回同 owner 资料(§4.5/§7.x)→
     **fail-closed 拒绝**(`FilterValidationException`,A3 映射 B2xx)+ 补缺 project_id 拒绝单测。
+  - `AUTHZ-LOG-001`(warning,复审新增)——jCasbin 默认 INFO 打印完整 Policy/Role links + 每次 enforce 的 sub/obj/act,
+    生产切 PG 后泄露用户-角色绑定与授权决策 → `Util.enableLog=false`(**静态块**,类加载即生效、先于构造期 Policy 转储)
+    + application.yml `org.casbin.jcasbin: warn` 双保险。`mvn verify` 输出实测 jCasbin 日志已静默。业务审计另由 Java 侧结构化留痕。
 - **约定**:claim 口径(perm_tags/corpus_scope/project_id)为 dev 约定,真 SSO schema 待甲方 §12;文件策略仅 A2,生产切 PG JDBC adapter。
 
 ## 待办 / 未决(TODO)

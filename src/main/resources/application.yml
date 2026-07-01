@@ -12,6 +12,12 @@ spring:
 server:
   port: 8080
 
+logging:
+  level:
+    # 防授权明细泄露(AUTHZ-LOG-001):jCasbin 默认 INFO 打印 Policy/Role/enforce 决策。
+    # 与 Authorizer 里的 Util.enableLog=false 双保险(挡任何绕过 Util 直走 slf4j 的路径)。
+    org.casbin.jcasbin: warn
+
 # 后续任务注入（绝不入库，走 application-local* / env，见 .gitignore）：
 #   A2 spring.datasource.*（PG 权威库，MyBatis-Plus）
 #   A3 audit-ai 边界：base-url + X-Internal-Token（env AUDIT_AI_INTERNAL_TOKEN）

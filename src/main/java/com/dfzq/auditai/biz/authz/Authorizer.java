@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import org.casbin.jcasbin.main.Enforcer;
+import org.casbin.jcasbin.util.Util;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,13 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class Authorizer {
+
+    static {
+        // 全局关 jCasbin 日志(默认 INFO 打印完整 Policy/Role links + 每次 enforce 的 sub/obj/act)——
+        // 生产切 PG casbin_rule 后会泄露真实用户-角色绑定与授权决策明细(AUTHZ-LOG-001)。
+        // 置于静态块:类加载即生效,先于构造期的 Policy 转储。业务审计另由 Java 侧结构化留痕。
+        Util.enableLog = false;
+    }
 
     private final Enforcer enforcer;
 
