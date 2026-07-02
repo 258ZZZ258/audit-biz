@@ -40,3 +40,7 @@ logs/
 
 # Review 闭环产物
 .review/
+
+# CLAUDE.md / AGENTS.md 改本地私有,不入库(2026-07-02 决策;git rm --cached 停跟踪,保留本地副本)
+CLAUDE.md
+AGENTS.md
