@@ -108,8 +108,10 @@
 
 1. **`openapi/boundary.v1.yaml` → v1.1.0**:`QueryCitationEvent` 加可选 `score`(number 0–1,per-hit 融合分归一)。
    理由:四-Tab 匹配度需 per-hit 分,biz 无法自算(不检索)。属"加可选字段不破契约"。
-2. **`frontend.regquery.v1.yaml`**:`result` 事件加 `structured{regulations,clauses,regulatory_rules,cases,citation_advice,…}`
-   四-Tab 契约(对齐原型 V3;字段口径参考 audit-ai SPEC-API §4,但**由 biz 从 PG 装配**)。
+2. **`frontend.regquery.v1.yaml`**:四-Tab 已在 `result` 事件(**扁平** `regulations/clauses/rules/cases` + `counts`,
+   建仓时按原型 V3 建),**不重构成 `structured` 嵌套**(避免破坏 A4 已实现的 `result` 发射)。本次(v1.1.0-draft)补:
+   各 hit 加 `match_score`(接边界 `citation.score`)+ 原型缺字段(发布/生效日期、发文机关、文号、核心要求、适用主题、
+   引用建议 `citation_advice`、要求提炼卡 `regulatory_digest`);LLM/L2 富集字段 nullable 默认降级(零臆造)。
 3. **扩 A4 `CitationAssembler` → 四-Tab 装配**:biz 按 `chunk_id` 回查 PG `chunks ⋈ doc_versions`(+ `cases`),
    据 `corpus_type` 分桶(制度/条款/监管规则/案例),`score` 取自边界 `citation.score`。基于 `StubBoundaryClient` 先跑通,I1 换真源。
    → 与既有 `Citation` 四级回查同源,复用 `CitationMapper`。

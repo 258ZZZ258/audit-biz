@@ -168,6 +168,8 @@
   `docs/audit-biz-docs/BOUNDARY-RECONCILIATION-001.md`。audit-ai query-api(PR#39)与冻结边界 CP-A 冲突,决策=守边界。
   - **阻塞 I1**:待 audit-ai 交付符合 `boundary.v1.yaml` 的 `POST /v1/query`(无身份 `X-Internal-Token` + `filters`→Milvus 前置过滤
     + SSE 五事件 + `citation.score` 加法)后,biz 做 I1(`StubBoundaryClient` → 真 HTTP 客户端 + SSE 解析)。
-  - **biz 侧不阻塞并行项**:边界 `boundary.v1.yaml` bump **v1.1.0**(加 `citation.score`)+ 前端契约 `frontend.regquery.v1.yaml`
-    加 `result.structured` 四-Tab(加法);扩 A4 `CitationAssembler` → 四-Tab PG 回查装配(基于 stub 先跑通)。均走 SDD。
+  - **biz 侧不阻塞并行项**:① ✅ `boundary.v1.yaml` bump **v1.1.0**(加 `citation.score`,commit `9535740`);
+    ② ✅ 前端契约 `frontend.regquery.v1.yaml` **v1.1.0-draft**——四-Tab(建仓时已扁平在 `result`)补 `match_score`
+    (接边界 `citation.score`)+ 原型缺字段(日期/机关/文号/核心要求/主题/引用建议/提炼卡,LLM/L2 富集 nullable 降级);
+    ③ ⏳ 扩 A4 `CitationAssembler` → 四-Tab PG 回查装配(基于 stub 先跑通,走 SDD)。
   - **跟踪**:回灌 audit-ai(v0.4 §15)后,记其 `/v1/query` 落地 commit / 实际 DTO 于本 TODO。

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: audit-biz → 前端(genesis-ui)制度查询契约
-  version: 1.0.0-draft
+  version: 1.1.0-draft
   description: >
     audit-biz 对前端的制度查询页契约(v0.4 §8.1 / RAG §5.9)。依据产品原型 V3
     (东方/制度查询/微信图片_20260629150748 与 _150816)。biz 消费边界 /v1/query(见 boundary.v1.yaml)、
@@ -82,18 +82,33 @@ paths:
     get:
       operationId: getSession
       summary: '[占位] 会话详情（用户问题/系统摘要/计数卡）'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
       responses:
         '501': { description: 'Not Implemented（占位）' }
   /regulation/queries/{query_id}/audit-trail:
     get:
       operationId: getAuditTrail
       summary: '[占位] 操作与留痕（时间/操作人/操作/操作点/状态）'
+      parameters:
+        - name: query_id
+          in: path
+          required: true
+          schema: { type: string }
       responses:
         '501': { description: 'Not Implemented（占位）' }
   /regulation/queries/{query_id}/export:
     post:
       operationId: exportQueryReport
       summary: '[占位] 导出查询报告（异步任务 → GET /tasks/{id}）'
+      parameters:
+        - name: query_id
+          in: path
+          required: true
+          schema: { type: string }
       responses:
         '501': { description: 'Not Implemented（占位）' }
   /files:
@@ -216,6 +231,14 @@ components:
         case_insights:
           type: array
           items: { $ref: '#/components/schemas/CaseInsight' }
+        citation_advice:
+          type: array
+          items: { type: string }
+          description: 条款引用建议(「命中条款」Tab 下;LLM 提炼,默认关时空数组,前端隐藏卡片)。
+        regulatory_digest:
+          type: array
+          items: { $ref: '#/components/schemas/DigestCard' }
+          description: 监管要求提炼卡(「监管规则」Tab 下;LLM 提炼,默认关时空数组)。
         suggested_followups:
           type: array
           items: { type: string }
@@ -252,25 +275,59 @@ components:
           nullable: true
           enum: [effective, superseded, abolished]
         snippet: { type: string, nullable: true, description: 命中条款摘录 }
+        match_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: 匹配度(0–1,前端 ×100 显示%);源自边界 citation.score(per-hit)。null=audit-ai 未回,前端隐藏。
+        theme: { type: string, nullable: true, description: 适用主题(clause_tags/实体;未打标则 null、零臆造) }
 
     RegulationHit:
       type: object
+      description: 命中制度(doc 级聚合;原型「命中制度」Tab)。
       required: [doc_id]
       properties:
         doc_id: { type: string }
         doc_title: { type: string }
         doc_no: { type: string, nullable: true }
+        match_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: >
+            匹配度(0–1,前端 ×100 显示%)。biz 取该制度命中条款 score 的最高值聚合;源自边界
+            citation.score(boundary.v1.yaml v1.1.0)。audit-ai 未回 score 时为 null,前端隐藏匹配度。
+        publish_date: { type: string, format: date, nullable: true, description: 发布日期(doc_versions.issue_date;本地 stand-in 无此列→null;I1 连共享 PG 填) }
+        effective_date: { type: string, format: date, nullable: true, description: 生效日期(doc_versions.effective_date;同上) }
+        issuing_dept: { type: string, nullable: true, description: 发布部门(doc_versions.issuer) }
+        clause_excerpt: { type: string, nullable: true, description: 条款内容节选(chunks.text 截断) }
         version: { type: string, nullable: true }
         status: { type: string, nullable: true }
         hit_clause_count: { type: integer, description: 该制度命中条款数 }
 
     RuleHit:
       type: object
+      description: 命中监管规则(外规;原型「监管规则」Tab)。
       required: [doc_id]
       properties:
         doc_id: { type: string }
         title: { type: string }
-        issuer: { type: string, nullable: true, description: 发文机关 }
+        issuer: { type: string, nullable: true, description: 发文机关(doc_versions.issuer) }
+        doc_no: { type: string, nullable: true, description: 文号(doc_versions.doc_number) }
+        publish_date: { type: string, format: date, nullable: true, description: 发布日期(doc_versions.issue_date) }
+        match_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: 匹配度(0–1,前端 ×100 显示%);源自边界 citation.score 聚合。null=未回,前端隐藏。
+        core_requirement: { type: string, nullable: true, description: 核心监管要求(chunks.text / E1 义务抽取;未抽取则 null) }
+        theme: { type: string, nullable: true, description: 适用主题(clause_tags;未打标则 null) }
         status: { type: string, nullable: true }
 
     CaseHit:
@@ -294,6 +351,15 @@ components:
       properties:
         title: { type: string }
         summary: { type: string }
+
+    DigestCard:
+      type: object
+      description: 提炼卡片(监管要求提炼;原型「盾/查/迹」角标)。LLM 提炼,默认关时不产出。
+      required: [title, body]
+      properties:
+        tag: { type: string, nullable: true, description: 卡片角标短字(如 盾/查/迹) }
+        title: { type: string }
+        body: { type: string }
 
     DoneEvent:
       type: object

@@ -44,9 +44,11 @@
 事件序 `context` →(`delta` 多个)→ `result` → `done`;任意时刻 `error`:
 - **`context`**(右侧面板):query_id/session_id/current_question/route_type/hit_skill/knowledge_scope[]/role/permission_scope/short_term_memory?/review{required,status}。
 - **`delta`**:block_seq + block_type(text|table|case_card|clarify_question)+ content(系统摘要增量;case_card=案例启示卡)。
-- **`result`**(末尾装配富结构):elapsed_ms · counts{regulations,clauses,rules,cases} · regulations[]/clauses[](完整四级引用)/rules[]/cases[](cases 表)· case_insights[] · suggested_followups[] · confidence/ai_label/review_required/export_enabled。
+- **`result`**(末尾装配富结构):elapsed_ms · counts{regulations,clauses,rules,cases} · regulations[]/clauses[](完整四级引用)/rules[] **各带 `match_score`(匹配度,源自边界 `citation.score`)** · cases[](cases 表)· case_insights[] · citation_advice[] · regulatory_digest[] · suggested_followups[] · confidence/ai_label/review_required/export_enabled。
 - **`done`**:finish_reason(stop|refused|length|error)+ exhausted_scope[](拒答时)。
 - **`error`**:`{ error:{code,message,request_id} }`。
+
+> **来源分档(对齐 audit-ai SPEC-API §12)**:`match_score` 源自边界 `citation.score`(v1.1.0);发布/生效日期、发文机关、文号、条款节选 源自 `doc_versions`/`chunks`(本地 stand-in 列少→null,I1 连共享 PG 填);`theme`/`core_requirement`/`citation_advice`/`regulatory_digest`/案例 `core_issue`/`insight` 为 LLM 提炼或 L2 富集,**默认关 → 空/null,前端降级隐藏,零臆造**(红线)。
 
 ## 5. 明细端点(核心)
 
