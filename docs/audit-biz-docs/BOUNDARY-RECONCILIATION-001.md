@@ -146,3 +146,18 @@
 - `query/query/api/routes_export.py`、`export_xlsx.py`——导出(BR-6)。
 - `query/query/api/service.py::structured_for`、SPEC-API §4——四-Tab(BR-8,归 biz 装配)。
 - `docs/query-agent-docs/SPEC-API.md`——audit-ai 侧 API 设计规格(前端接缝口径)。
+
+## 8. 跨仓引用坐标(remote ↔ remote)
+
+保证两仓**远端**互相可解析本方案(不依赖同机 `../` 相对路径):
+
+- **audit-biz(本仓 = 主本)**:`https://github.com/258ZZZ258/audit-biz`
+  - 本方案:`docs/audit-biz-docs/BOUNDARY-RECONCILIATION-001.md`
+  - 契约(规范单一源):`docs/audit-biz-docs/openapi/boundary.v1.yaml`(v1.1.0)
+- **audit-ai(姊妹仓 = 照做方)**:`https://github.com/258ZZZ258/audit-ai`
+  - 指针(引本主本,入库):`docs/query-agent-docs/BOUNDARY-biz-contract-pointer.md`
+  - 可执行 finding(gitignore·同机 scratch,不入库):`.review/findings.json` → `boundary.contract.query-api-drift`
+  - 待改代码:`query/query/api/*`(**main 分支**;新增 `/v1/query` 薄壳)
+
+> §2/§7 里的 `../audit-ai/...` 是同机相对路径;对应远端坐标即上表 audit-ai 仓
+> (`../` 只在两仓做姊妹目录的机器上解析;远端/他机/CI 用上表 URL)。
