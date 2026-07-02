@@ -115,6 +115,35 @@
   - `BOUNDARY-CITATION-KEY-001`——只收 `chunkId` 会把契约合法的 `clause_id`(必填)引用全丢 → **clause_id 优先 + chunk_id 兼容 fallback**(契约合规,不改冻结契约;完整对齐留 TODO 与 B 轨定)。
 - **待对齐(TODO-CITE-KEY-001)**:回查主键实为 **chunk_id**(audit-ai chunks 表主键,无独立 clause 列);冻结契约 §8.1 写 clause_id 必填/chunk_id 可选,与实现相反。见 TODO。
 
+## 2026-07-02 · 边界对账:audit-ai query-api(PR#39)与冻结边界 CP-A 冲突 → 守边界
+
+- **触发**:audit-ai `origin/main` 并入 **PR#39 `feat/query-api`**(query HTTP 层完工)。核对发现它**不是**
+  `boundary.v1.yaml` v1.0.0(Checkpoint A 冻结)那个端点,而是**对着产品原型直连前端**建的会话式富 API
+  (疑 v0.3 单后端遗留形状)——全仓 grep 无 `audit-biz/boundary/X-Internal-Token/perm_tags`,**建时完全不知 biz 边界**。
+- **关键判断**:漂移在 **HTTP 薄壳形状**,**不在 AI 内核**——§10 `contract.py` 域契约(`QueryResult/AnswerBlock/Citation`)
+  本就是 CP-A 的冻结对齐对象(SPEC-BOUNDARY 附录 A),`QueryAgent.ask` 产 `QueryResult` 可原样复用。故守边界成本低。
+- **四处硬冲突**(证据文件均在 `../audit-ai`):
+  - 端点形状:契约 `POST /v1/query` 单端点、无状态一次性 SSE ↔ 实建 `POST /api/query/v1/conversations/{cid}/messages`
+    (**需先建会话**)+ `/clauses` + `/export` 会话资源树(`query/query/api/app.py`、`routes_messages.py`)。
+  - **前置过滤红线**:契约必收 `perm_tags/corpus_types/project_id/owner` ↔ `AskBody` 只有
+    `query/attachments/include_superseded/corpus(internal|external)`,**收不了过滤值** → 直接接 = 权限前置过滤失效
+    (破一期红线 + SPEC-BOUNDARY §6 Never「检索后过滤」)。
+  - 无身份:契约 `X-Internal-Token` 无身份 ↔ `query/query/api/auth.py` 带 subject/role +「Casbin/SSO 留接缝」(授权归属越界)。
+  - 状态/回查/导出归属:v0.4 翻转 = Java 独占 PG 状态 + 引用四级回查 + 前端契约 ↔ audit-ai 自建 `query_*` 会话表 +
+    `/clauses/{id}` 四级回查(`routes_clauses.py`)+ `/export` xlsx → 违 SPEC-BOUNDARY §6 Never「让 audit-ai 回查 PG 装 citation」,两份漂移。
+- **决策(用户拍板 2026-07-02,AskUserQuestion)**:
+  - ① **守住 v0.4 冻结边界**(`boundary.v1.yaml` v1.0.0 仍主本):要求 audit-ai 在**现有 `QueryAgent.ask` 之上加薄壳**
+    `POST /v1/query`(无身份 + 收 filters + SSE `meta/delta/citation/done/error`);会话/身份/导出/回查**不进边界**(归 biz)。
+    其 `QueryAgent.ask`/`structured_for` 域逻辑保留复用;已建的 `/api/query/v1/*` 会话式 API 是否留作他用或弃,由 audit-ai 侧定,**但出边界**。
+  - ② **四-Tab 结构化结果归 biz**:biz 从 PG 按 `chunk_id` 回查装配(与引用四级回查同源),守「Java 持前端契约」;
+    边界只回轻量 id + **per-hit `score`**(加法),四-Tab 分桶由 biz 据 PG `corpus_type` 派生。
+- **否决**:「重裁边界、采纳 audit-ai 会话式富 API」——与甲方硬约束(前端交互必须 Java)+ 无身份边界 + 前置过滤红线冲突,
+  需解冻 CP-A + 甲方级重批,代价过大。
+- **产物**:`docs/audit-biz-docs/BOUNDARY-RECONCILIATION-001.md`(对账 + 给 audit-ai 的 `/v1/query` 薄壳 build recipe + 加法修订清单)。
+  回灌路径见 v0.4 §15(以 CP 回灌 audit-ai)。
+- **影响**:**I1(真 HTTP 客户端替 `StubBoundaryClient`)阻塞**,待 audit-ai 交付 `/v1/query` 薄壳;biz 侧四-Tab 装配 +
+  两份契约加法(见下 TODO)**不阻塞**,现可推进。见 `TODO-BOUNDARY-RECON-001`。
+
 ## 待办 / 未决(TODO)
 
 - [x] **TODO-CITE-KEY-001 · 回查主键 clause_id vs chunk_id**(✅ 坐实,2026-07-01):查 audit-ai `query/query/generate/anchors.py`
@@ -134,3 +163,11 @@
   - **已做**:固化为审查红线 `audit-biz-code-review.mdc` #3(permitAll 不得覆盖受保护端点)+ `AGENTS.md` 硬约束。
   - **收口**:✅ A1 已实现 —— `SecurityConfig` 受保护端点强制认证 + permitAll 白名单 `{/health,/sso/callback}`;
     `SecurityConfigTest` protected→401 验证(2026-07-01)。真 SSO 协议(§12 待甲方)定后只换 issuer/starter。
+
+- [ ] **TODO-BOUNDARY-RECON-001 · audit-ai `/v1/query` 薄壳适配(I1 阻塞项)**(2026-07-02 开):详见
+  `docs/audit-biz-docs/BOUNDARY-RECONCILIATION-001.md`。audit-ai query-api(PR#39)与冻结边界 CP-A 冲突,决策=守边界。
+  - **阻塞 I1**:待 audit-ai 交付符合 `boundary.v1.yaml` 的 `POST /v1/query`(无身份 `X-Internal-Token` + `filters`→Milvus 前置过滤
+    + SSE 五事件 + `citation.score` 加法)后,biz 做 I1(`StubBoundaryClient` → 真 HTTP 客户端 + SSE 解析)。
+  - **biz 侧不阻塞并行项**:边界 `boundary.v1.yaml` bump **v1.1.0**(加 `citation.score`)+ 前端契约 `frontend.regquery.v1.yaml`
+    加 `result.structured` 四-Tab(加法);扩 A4 `CitationAssembler` → 四-Tab PG 回查装配(基于 stub 先跑通)。均走 SDD。
+  - **跟踪**:回灌 audit-ai(v0.4 §15)后,记其 `/v1/query` 落地 commit / 实际 DTO 于本 TODO。

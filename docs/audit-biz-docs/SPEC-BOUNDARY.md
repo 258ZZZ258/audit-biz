@@ -37,7 +37,7 @@
   **字段词汇与 audit-ai `query/query/contract.py`(§10 统一输出契约)逐字对齐**——见附录 A 对照表。
   - `meta`(响应级头):`request_id` + `route_type`(8 值枚举)+ **`ai_label`(bool,恒 true)** + **`review_required`(bool;route=judgmental→true,biz 渲染"AI 辅助判断,人工复核"框)** + `export_enabled?`。
   - `delta`:`block_seq` + `block_type`(text/table/case_card/clarify_question)+ `text`(增量或整块;`contract.py` `AnswerBlock.stream=false` 的块作单条整块)。
-  - `citation`:**轻量标识,只回 `clause_id`(+`chunk_id?`)**——**biz 回查 PG 装配完整 citation**(§8.2 Java 收口,audit-ai 热路径不依赖 PG)。`confidence/ai_label/route_type` 是**响应级**(在 meta/done),非 per-citation(纠 v0.4 §8.1 散文之松)。
+  - `citation`:**轻量标识,只回 `clause_id`(+`chunk_id?`,+`score?`)**——**biz 回查 PG 装配完整 citation**(§8.2 Java 收口,audit-ai 热路径不依赖 PG)。`confidence/ai_label/route_type` 是**响应级**(在 meta/done),非 per-citation(纠 v0.4 §8.1 散文之松)。**`score`(v1.1.0 加法)** = per-hit 检索融合分(归一 0–1),供 biz 装四-Tab「匹配度」;biz 不检索无法自算,可空降级(BOUNDARY-RECONCILIATION-001 §4)。
   - `done`(响应级尾):`finish_reason`(stop/**refused**=覆盖拒答/length/error)+ `confidence`(float)+ `exhausted_scope`(string[],拒答时填)+ `token_usage?`。
   - `error`:`code`+`message`。
 
@@ -117,6 +117,7 @@ npx @redocly/cli lint docs/audit-biz-docs/openapi/boundary.v1.yaml
 | `QueryResult.confidence`(float) | `done.confidence` | 透传 |
 | `QueryResult.exhausted_scope`(list) | `done.exhausted_scope` | 拒答时展示已穷尽范围 |
 | `Citation.clause_id` | `citation.clause_id`(+`chunk_id?`)| **回查主键** |
+| 检索融合分(retrieve 层,per-hit) | `citation.score?`(v1.1.0 加法) | 四-Tab「匹配度」直显(0–100%) |
 | `Citation.{doc_title,doc_no,clause_path,page_start,page_end,version,status}` | **边界不回**(audit-ai 跳回查) | **biz 按 clause_id 回查 PG 填**→ `citations[]` |
 | —(错误) | `error.{code,message}` / `ApiError` | 错误码体系(含 `B104`) |
 

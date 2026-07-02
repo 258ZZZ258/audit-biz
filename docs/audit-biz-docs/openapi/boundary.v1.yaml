@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: audit-biz ↔ audit-ai 边界契约（边界二·单向无身份）
-  version: 1.0.0
+  version: 1.1.0
   description: >
     audit-biz（Java，唯一对外入口）→ audit-ai（Python，无状态推理/解析端点）的内网服务间契约。
     单向、无身份、共享密钥 + 网络隔离（v0.4 §6.3/§7 边界二）。Java 把预计算好的权限过滤值
@@ -176,6 +176,15 @@ components:
       properties:
         clause_id: { type: string, description: 回查主键（§7.3 Citation.clause_id）}
         chunk_id: { type: string, nullable: true, description: 命中块 id（可选，溯源/调试）}
+        score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: >
+            per-hit 检索融合分（归一 0–1）。**v1.1.0 加法**：biz 装配制度查询四-Tab「匹配度」所需，
+            biz 不检索故无法自算（BOUNDARY-RECONCILIATION-001 §3.4/§4）。可空：audit-ai 未提供时 biz 降级不显匹配度，不影响回查。
     QueryDoneEvent:
       type: object
       description: 末事件，承响应级汇总（§10 QueryResult 尾部字段）。
