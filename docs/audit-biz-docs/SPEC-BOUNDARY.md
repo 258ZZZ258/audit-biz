@@ -51,6 +51,7 @@
 - 流前错误:HTTP status + `ApiError{ error:{code,message,request_id} }`。流中错误:SSE `error` 事件后关闭。
 - 段位:`E1xx–E8xx`(摄取侧,复用管线 §11.2)+ `B1xx`(鉴权/权限)/`B2xx`(业务校验)/`B3xx`(外部源)/`B4xx`(任务编排)。
 - **本契约新增** `B104 内部令牌无效`(边界二服务认证失败)——§8.3 原 B1xx 是用户向,B104 是服务向;**已回灌 v0.4 §8.3 B1xx 段**(T0.1 完成)。
+- **本契约新增** `B105 查询热路径内部错误`(`/v1/query` SSE `error` 事件:检索/嵌入/生成阶段服务向失败)——同 B104 属 B1xx 服务向段;不泄内部细节(堆栈进日志/trace)。audit-ai `routes_boundary` 已发此码,待回灌 v0.4 §8.3。
 
 ### 3.4 版本化(One-Version Rule)
 

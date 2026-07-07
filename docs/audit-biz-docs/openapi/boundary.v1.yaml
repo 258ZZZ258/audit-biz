@@ -209,7 +209,7 @@ components:
       type: object
       required: [code, message]
       properties:
-        code: { type: string, description: 见错误码体系（E1xx–E8xx / B1xx–B4xx，含 B104）}
+        code: { type: string, description: 见错误码体系（E1xx–E8xx / B1xx–B4xx，含 B104 内部令牌无效、B105 查询热路径内部错误）}
         message: { type: string }
 
     ApiError:
