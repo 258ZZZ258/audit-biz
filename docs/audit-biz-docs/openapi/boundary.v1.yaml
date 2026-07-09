@@ -1,12 +1,13 @@
 openapi: 3.0.3
 info:
   title: audit-biz ↔ audit-ai 边界契约（边界二·单向无身份）
-  version: 1.1.0
+  version: 1.2.0
   description: >
     audit-biz（Java，唯一对外入口）→ audit-ai（Python，无状态推理/解析端点）的内网服务间契约。
     单向、无身份、共享密钥 + 网络隔离（v0.4 §6.3/§7 边界二）。Java 把预计算好的权限过滤值
     （perm_tags / corpus_types / project_id / owner）当普通字段下传；检索前置过滤红线满足（算在 Java、用在 Python）。
-    本版（v1）只定**制度查询同步热路径** /v1/query（SSE），其余端点占位（签名 + 职责，DTO 待各自 SPEC）。
+    v1.1 定**制度查询热路径** /v1/query（SSE）；**v1.2 增定** /v1/documents:process（对话上传文档·
+    无状态解析为结构化中间产物）；/v1/compare · /v1/ocr · /v1/ingest-batch 仍占位（签名+职责，DTO 待各自 SPEC）。
     规范单一源 = 本 YAML；散文语义/约束见 ../SPEC-BOUNDARY.md。
 servers:
   - url: http://audit-ai.internal:8000
@@ -41,6 +42,35 @@ paths:
               schema: { $ref: '#/components/schemas/SseEventEnvelope' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/documents:process:
+    post:
+      operationId: documentProcess
+      summary: 对话上传文档 · 无状态解析为结构化中间产物（context-first）
+      description: >
+        用户在对话框上传文件 → **audit-biz 校验（类型/大小）+ 上传 MinIO** → 调本端点传 object_key。
+        audit-ai **无状态**从 MinIO 拉对象 → 解析 → 结构化切块 → 中间产物（结构化 chunks + markdown）落
+        MinIO `artifact/{upload_id}.json`，返回元数据。产物**任务无关**，供下游作 LLM 上下文（问答/总结/抽取）。
+        **不写权威 PG、不落会话**（红线：会话/导出不落本仓）；向量/制度比对/大文档 RAG 为后续（SPEC-UPLOAD §8）。
+        MinIO key 约定：raw = `upload/{upload_id}/{filename}`（Java put）、产物 = `artifact/{upload_id}.json`（audit-ai put）。
+        DTO 语义主本见 audit-ai `docs/upload-processing-docs/SPEC-UPLOAD-PROCESSING.md`。
+      security:
+        - InternalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DocumentProcessRequest' }
+      responses:
+        '200':
+          description: 处理成功，返回产物元数据（产物本体在 MinIO，biz 按 artifact_key 自取）。
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentProcessResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -123,6 +153,42 @@ components:
           type: boolean
           default: false
           description: 是否纳入 superseded 版本（默认只检索 effective）。
+
+    DocumentProcessRequest:
+      type: object
+      required: [object_key, upload_id, filename]
+      properties:
+        object_key:
+          type: string
+          description: Java 上传到 MinIO 的 raw 对象 key（约定 `upload/{upload_id}/{filename}`）。
+        upload_id:
+          type: string
+          description: 调用方生成的句柄（建议 ULID）；= 产物 key（`artifact/{upload_id}.json`）+ 幂等键。
+        filename:
+          type: string
+          description: 原文件名（audit-ai 据扩展名判类型；白名单 pdf/docx/png/jpg，余 → 415）。
+        corpus_hint:
+          type: string
+          nullable: true
+          enum: [internal, external, qa, case]
+          description: 切块 profile 提示；缺省按制度条款树。
+    DocumentProcessResponse:
+      type: object
+      required: [upload_id, artifact_key, chunk_count, status]
+      properties:
+        upload_id: { type: string, description: 回显 upload_id }
+        artifact_key:
+          type: string
+          description: 产物在 MinIO 的 key（`artifact/{upload_id}.json`），biz 自取。
+        title: { type: string, nullable: true, description: 解析出的文档标题 }
+        page_count: { type: integer, nullable: true, description: 页数（渲染件/原 PDF）}
+        chunk_count: { type: integer, description: 结构化切块数 }
+        chunk_types:
+          type: array
+          items: { type: string }
+          nullable: true
+          description: 出现的 chunk_type 集合（clause / table / …）。
+        status: { type: string, enum: [ok], description: 处理状态 }
 
     RouteType:
       type: string
@@ -234,6 +300,9 @@ components:
     ValidationError:
       description: 入参语义校验失败（如 filters 缺必填位）
       content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+    UnsupportedMediaType:
+      description: 上传类型不在白名单/无解析器（错误码 B2xx 业务校验，具体值待回灌 §8.3）
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
     ServerError:
-      description: audit-ai 内部错误（检索/嵌入/生成）
+      description: audit-ai 内部错误（检索/嵌入/生成/**文档解析**；文档处理失败服务向码 B106 待回灌 §8.3）
       content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
