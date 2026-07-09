@@ -41,21 +41,37 @@
   - `done`(响应级尾):`finish_reason`(stop/**refused**=覆盖拒答/length/error)+ `confidence`(float)+ `exhausted_scope`(string[],拒答时填)+ `token_usage?`。
   - `error`:`code`+`message`。
 
-### 3.2 占位端点(签名+职责锁定,DTO 待各自 SPEC)
+### 3.2 `POST /v1/documents:process`(对话上传文档,无状态解析为中间产物)
+
+- **触发链**:用户对话框上传 → **audit-biz 校验(类型/大小)+ 上传 MinIO** → 调本端点传 `object_key`。
+  与前端交互(上传 UI)全走 Java;audit-ai 只拿 key **无状态**解析(红线:与前端交互走 Java)。
+- **请求**(`DocumentProcessRequest`):`object_key` + `upload_id`(ULID,= 产物 key + 幂等键)+ `filename`
+  (据扩展名判类型,白名单 pdf/docx/png/jpg,余 → 415)+ `corpus_hint?`(切块 profile)。
+- **处理**(轻链,无状态):MinIO 拉对象 → 解析 → 结构化切块 → **中间产物(结构化 chunks + markdown)**
+  落 MinIO `artifact/{upload_id}.json`。**不写权威 PG、不落会话**(红线:会话/导出不落本仓);
+  向量/制度比对/大文档 RAG 为后续(SPEC-UPLOAD §8)。
+- **响应**(`DocumentProcessResponse`):`upload_id` + `artifact_key`(biz 自取产物)+ `title?`/`page_count?`/
+  `chunk_count`/`chunk_types?` + `status`。产物**任务无关**,供下游作 LLM 上下文(问答/总结/抽取)。
+- **MinIO key 约定**:raw = `upload/{upload_id}/{filename}`(Java put)、产物 = `artifact/{upload_id}.json`(audit-ai put)。
+- **DTO 语义主本**:audit-ai `docs/upload-processing-docs/SPEC-UPLOAD-PROCESSING.md`(已批准 2026-07-09)。
+
+### 3.3 占位端点(签名+职责锁定,DTO 待各自 SPEC)
 
 `POST /v1/compare`(异步比对,提交→任务引用,进度走 biz `async_tasks` §8.4)· `POST /v1/ocr`(发票图像→文本)·
 `POST /v1/ingest-batch`(离线 S0–S5 语料生产)。v1 返回 `501`,不展开 DTO。
 
-### 3.3 错误码(沿用 §8.3,本契约相关段)
+### 3.4 错误码(沿用 §8.3,本契约相关段)
 
 - 流前错误:HTTP status + `ApiError{ error:{code,message,request_id} }`。流中错误:SSE `error` 事件后关闭。
 - 段位:`E1xx–E8xx`(摄取侧,复用管线 §11.2)+ `B1xx`(鉴权/权限)/`B2xx`(业务校验)/`B3xx`(外部源)/`B4xx`(任务编排)。
 - **本契约新增** `B104 内部令牌无效`(边界二服务认证失败)——§8.3 原 B1xx 是用户向,B104 是服务向;**已回灌 v0.4 §8.3 B1xx 段**(T0.1 完成)。
 - **本契约新增** `B105 查询热路径内部错误`(`/v1/query` SSE `error` 事件:检索/嵌入/生成阶段服务向失败)——同 B104 属 B1xx 服务向段;不泄内部细节(堆栈进日志/trace)。audit-ai `routes_boundary` 已发此码,待回灌 v0.4 §8.3。
+- **v1.2 新增(待回灌 §8.3)**:`/v1/documents:process` 的 `415`(上传类型不在白名单/无解析器,`B2xx` 业务校验,具体值待定)+ `B106 文档处理内部错误`(解析/结构化服务向失败,同 B105 不泄细节)。
 
-### 3.4 版本化(One-Version Rule)
+### 3.5 版本化(One-Version Rule)
 
 URL 前缀 `/v1/`;**只增不改**(加可选字段不破契约),破坏性变更 → `/v2`。任何时刻线上只存一个版本。
+当前 **v1.2.0**:v1.1 定 `/v1/query`;v1.2 增定 `/v1/documents:process`(加法,不破 v1)。
 
 ## 4. Project Structure(产物落点)
 
