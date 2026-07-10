@@ -1,0 +1,51 @@
+spring:
+  config:
+    activate:
+      on-profile: share
+  # 保留甲方 Boot 2 配置键，同时提供 2.7 对应的 servlet 命名空间。
+  http:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:10MB}
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
+    encoding:
+      force: true
+      charset: UTF-8
+      enabled: true
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:10MB}
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
+  threads:
+    virtual-enabled: ${SPRING_VIRTUAL_THREADS_ENABLED:false}
+
+server:
+  port: ${SERVER_PORT:8090}
+  servlet:
+    context-path: /
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  max-http-header-size: ${MAX_HTTP_HEADER_SIZE:10MB}
+  max-http-post-size: ${MAX_HTTP_POST_SIZE:10MB}
+  tomcat:
+    max-http-form-post-size: ${MAX_HTTP_POST_SIZE:10MB}
+    connection-timeout: ${SERVER_CONNECTION_TIMEOUT:-1}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS:health,info}
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:when_authorized}
+
+proj:
+  genesis-key: ${GENESIS_PROJECT_KEY:idap}
+
+genesis:
+  loginFlag: ${GENESIS_LOGIN_FLAG:3}
+  auth:
+    free:
+      path[0]: ${GENESIS_AUTH_FREE_PATH:/authfree/**}

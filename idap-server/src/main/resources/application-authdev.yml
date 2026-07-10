@@ -1,0 +1,31 @@
+spring:
+  config:
+    activate:
+      on-profile: authdev
+  redis:
+    database: ${REDIS_DATABASE:1}
+    password: ${REDIS_PASSWORD:}
+    timeout: ${REDIS_TIMEOUT:60000}
+    sentinel:
+      master: ${REDIS_SENTINEL_MASTER:}
+      nodes: ${REDIS_SENTINEL_NODES:}
+
+dubbo:
+  registry:
+    address: ${DUBBO_REGISTRY_ADDRESS:N/A}
+
+ca:
+  auth:
+    Url: ${CA_AUTH_URL:}
+    url302: ${CA_AUTH_REDIRECT_URL:}
+    url302_bak: ${CA_AUTH_REDIRECT_BACKUP_URL:}
+  appId: ${CA_APP_ID:}
+  clientSecret: ${CA_CLIENT_SECRET:}
+  domainName: ${CA_DOMAIN_NAME:}
+
+proj:
+  genesis-key: ${GENESIS_PROJECT_KEY:}
+
+genesis:
+  auth:
+    enabled: ${GENESIS_AUTH_ENABLED:false}

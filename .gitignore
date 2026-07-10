@@ -29,6 +29,10 @@ Thumbs.db
 # Secrets / local config (绝不入库)
 .env
 *.env
+.env.local
+.env.*.local
+*.pem
+*.key
 application-local.yml
 application-local.yaml
 application-local.properties

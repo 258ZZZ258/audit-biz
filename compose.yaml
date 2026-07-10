@@ -16,7 +16,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
       # 首次初始化空库时按序执行(schema → seed)。
-      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+      - ./idap-ddl/src/main/resources/ddl:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U audit_biz -d audit_biz"]
       interval: 5s

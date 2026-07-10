@@ -1,44 +1,78 @@
-# audit-biz
+# idap-proj-parent · audit-biz
 
-审计大模型系统一期的 **Java 后端服务**(Spring Boot)——对前端的唯一入口,承载全部有状态能力:
-鉴权授权、业务数据 CRUD、费用规则引擎、报告/Excel/Word 渲染、任务状态机、引用回查装配、外部数据源接入、操作/审计日志。
+审计大模型系统一期 Java 后端的 Maven 多模块工程。应用对前端提供唯一入口，负责 SSO 验令牌、
+jCasbin 授权、权限过滤值预计算、Spring MVC SSE、PostgreSQL 引用装配和操作日志；无状态 AI
+推理与检索仍由姊妹项目 `audit-ai` 承担。
 
-无状态的 AI 推理与文档解析在姊妹仓 **audit-ai**(Python/FastAPI);两者之间为**单向、无身份**调用
-(共享密钥 + 网络隔离,Java 下传预计算的权限过滤值)。
+## 模块
 
-> 姊妹仓定位:本机 `../audit-ai`,远端 `ssh://git@ssh.github.com:443/258ZZZ258/audit-ai.git`。
-> 跨仓参考哪些文件见 `CLAUDE.md`「姊妹仓 audit-ai」。
+```text
+idap-proj-parent
+├── autocode-gen   甲方代码生成模块接缝
+├── idap-common    跨层 Model、统一错误模型
+├── idap-ddl       版本化数据库 DDL
+├── idap-genesis   Genesis 平台集成接缝
+├── idap-job       异步任务/定时任务接缝
+├── idap-server    Spring Boot 启动类和运行配置
+├── idap-service   Controller、Mapper、授权、引用和业务服务
+├── idap-test      单元测试与集成测试
+└── idap-ui        甲方 UI 模块接缝；Vue 源码仍在独立 audit-vue 项目
+```
+
+依赖方向固定为 `idap-server → idap-service → idap-common`，`idap-ddl` 独立维护版本化 SQL，测试统一放在
+`idap-test`。详细落位见 `docs/MODULE-LAYOUT.md`。
+
+Java 包名遵循甲方基座：公共契约使用 `com.orientsec.idap.common.model`，业务代码使用
+`com.orientsec.idap.core`，启动类为 `com.orientsec.idap.server.IdapAppServer`。
+
+## 技术基线
+
+- JDK 8
+- Spring Boot 2.7.18 + Spring MVC `SseEmitter`
+- MyBatis-Plus
+- jCasbin
+- Spring Security resource-server，仅负责令牌验证
+
+禁止引入 Spring Boot 3/Jakarta、WebFlux、JPA、Spring Cloud 和 `@PreAuthorize`。
+
+## 构建与运行
+
+```bash
+./mvnw clean verify
+
+# 只构建可运行服务及其依赖
+./mvnw -pl idap-server -am clean package
+
+java -jar idap-server/target/idap-server-1.0.0-SNAPSHOT-exec.jar
+```
+
+应用默认使用内存 H2。连接共享 PostgreSQL 和 audit-ai 时通过环境变量注入：
+
+```bash
+DB_URL=jdbc:postgresql://localhost:5433/audit_pipeline \
+SPRING_DATASOURCE_USERNAME=pipeline \
+SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD" \
+SSO_JWK_SET_URI=http://localhost:18080/jwks.json \
+AUDIT_AI_BASE_URL=http://localhost:8771 \
+AUDIT_AI_INTERNAL_TOKEN="$AUDIT_AI_INTERNAL_TOKEN" \
+java -jar idap-server/target/idap-server-1.0.0-SNAPSHOT-exec.jar
+```
+
+## 本地数据库
+
+`compose.yaml` 提供独立开发 PostgreSQL，首次启动执行
+`idap-ddl/src/main/resources/ddl/*.sql`。其中
+`chunks/doc_versions/cases` 只是本地引用回查 stand-in；三栈联调应连接 audit-ai 使用的共享 PG。
+甲方 MySQL 用户表版本脚本单独位于 `idap-ddl/src/main/resources/ddl/mysql`，不会被本地
+PostgreSQL 容器自动执行。
+
+```bash
+cp .env.example .env
+docker compose up -d
+```
 
 ## 文档
 
-- 后端总体设计(边界契约主本):`docs/审计大模型系统_后端总体技术框架设计_v0_4.md`
-- 时间轴 / 模块开发记忆:`docs/devlog.md` + `docs/devlogs/*`
-- 协作流程与栈约定:`CLAUDE.md`
-
-## 本地后端栈(Docker)
-
-现阶段仅 **PostgreSQL**(独立端口 **5544**,不撞 audit-ai 栈 5432/5433)。首次起库自动建表 + seed(语料回查表 + `casbin_rule`)。
-
-```bash
-cp .env.example .env      # 设 PG 密码(AUDIT_BIZ_PG_PASSWORD);.env 已 gitignore
-docker compose up -d      # 起 PG(首次自动 docker/initdb/*.sql:建表 + seed)
-docker compose down       # 停(留数据卷)
-docker compose down -v    # 停 + 清库
-```
-
-应用连库(**为 A4 引用回查 / I1 准备**;A4 数据源随 PR #4 合入。连接串/密钥经 Spring 标准 **env** 注入,绝不入库):
-
-```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5544/audit_biz \
-SPRING_DATASOURCE_USERNAME=audit_biz \
-SPRING_DATASOURCE_PASSWORD="$AUDIT_BIZ_PG_PASSWORD" \
-java -jar target/audit-biz-0.0.1-SNAPSHOT.jar
-```
-
-> **注**:`chunks/doc_versions/cases` 是本地 dev 回查用的**最小 stand-in**(audit-ai Alembic 管权威语料表,列更全);
-> 真集成(I1)连**共享 PG**。`casbin_rule` 是 biz 自有(A2 现用文件策略,切 PG 策略时用)。
-
-## 状态
-
-步行骨架(Track A,对 stub)已合并(见 `docs/devlog.md`):A0 脚手架 · A1 SSO 验令牌 · A2 jCasbin 授权 · A3 /query SSE · **A4 引用回查装配**。
-剩 **I1**(接真 audit-ai,替换边界 stub)。SDD 产物在 `docs/audit-biz-docs/`。
+- 后端总体设计：`docs/审计大模型系统_后端总体技术框架设计_v0_4.md`
+- Java↔Python 边界：`docs/audit-biz-docs/SPEC-BOUNDARY.md`
+- 前端制度查询契约：`docs/audit-biz-docs/SPEC-FRONTEND-REGQUERY.md`

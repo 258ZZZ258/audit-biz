@@ -1,0 +1,14 @@
+spring:
+  config:
+    activate:
+      on-profile: authtest
+
+ca:
+  domainName: ${CA_DOMAIN_NAME:}
+
+proj:
+  genesis-key: ${GENESIS_PROJECT_KEY:}
+
+genesis:
+  auth:
+    enabled: ${GENESIS_AUTH_ENABLED:false}
